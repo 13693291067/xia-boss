@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{项目名}} · 项目台</title>
+  <link rel="stylesheet" href="css/main.css?v=20260901f">
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-profile">
+    <div class="sb-avatar">虾<span class="dot"></span></div>
+    <div class="sb-prof-info">
+      <div class="sb-prof-name">{{项目名}}</div>
+      <div class="sb-prof-role">AI 影视创作项目台</div>
+    </div>
+  </div>
+  <div class="sb-section">
+    <div class="sb-section-title">创作工作台</div>
+    <div class="sb-item active" data-section="xiaju"><span class="ic2">📖</span>虾剧</div>
+    <div class="sb-item" data-section="xialiao"><span class="ic2">📜</span>虾料</div>
+    <div class="sb-item" data-section="xiage"><span class="ic2">🎨</span>虾格</div>
+    <div class="sb-item" data-section="xiatang"><span class="ic2">🎭</span>虾塘</div>
+    <div class="sb-item" data-section="xiajing"><span class="ic2">🎬</span>虾镜</div>
+    <div class="sb-item" data-section="tingfeng"><span class="ic2">🎬</span>听风电影</div>
+  </div>
+</aside>
+<main class="main">
+  <header class="topbar">
+    <h1 id="title">{{项目名}}</h1>
+    <div class="top-actions">
+      <span class="pill">风格 <b id="meta-style"></b></span>
+      <span class="pill" id="meta-name">共0集</span>
+      <span class="pill primary" id="mode-badge">模式</span>
+      <button class="pill" id="agent-btn" title="Agent 对话助手" style="cursor:pointer;border:1px solid var(--line)" onclick="toggleAgentDrawer()">🤖 Agent</button>
+      <button class="pill" id="dl-btn" title="下载资产（角色/道具/场景/首帧/尾帧/视频，打包 zip）" style="cursor:pointer;border:1px solid var(--line)" onclick="openAssetDownload()">📥 下载</button>
+      <button class="pill" id="settings-btn" title="设置（图片生成 API Key 等）" style="cursor:pointer;border:1px solid var(--line)" onclick="openSettings()">⚙ 设置</button>
+    </div>
+  </header>
+  <div class="content" id="content">
+    <!-- 模块内容动态填充 -->
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<div class="zoom-mask" id="zoom" onclick="closeZoom()">
+  <span class="x" onclick="event.stopPropagation();closeZoom()">×</span>
+  <img id="zoom-img" src="" alt="">
+  <div class="cap" id="zoom-cap"></div>
+</div>
+<div class="hist-mask" id="hist" onclick="if(event.target===this)closeHist()">
+  <div class="hist-panel">
+    <div class="hp-head">
+      <b id="hist-title">历史图片</b>
+      <span class="x" onclick="closeHist()">×</span>
+    </div>
+    <div id="hist-grid" class="hist-grid"></div>
+  </div>
+</div>
+
+<!-- 设置弹窗：渠道管理 -->
+<div class="set-mask" id="settings" onclick="if(event.target===this)closeSettings()">
+  <div class="set-box">
+    <div class="set-head">
+      <b>⚙ 设置 · AI 渠道</b>
+      <span class="x" onclick="closeSettings()">×</span>
+    </div>
+    <div class="set-body">
+      <div id="set-status" style="font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:14px"></div>
+
+      <div class="lbl" style="margin-bottom:6px">📡 渠道 <span style="color:var(--mut);font-weight:400">（多个 API 提供商可同时使用，每个渠道独立 Base URL / Key / 协议 / 模型）</span></div>
+      <div id="set-channels" style="margin-bottom:6px"></div>
+      <button class="add-btn" onclick="channelEdit(null)" style="background:var(--bg);border:1px dashed var(--line);color:var(--mut);border-radius:6px;padding:7px;cursor:pointer;font-size:12px;width:100%;margin-bottom:14px">+ 新增渠道</button>
+      <button class="add-btn" onclick="openAnnTagsSettings()" style="background:var(--bg);border:1px dashed var(--line);color:var(--mut);border-radius:6px;padding:7px;cursor:pointer;font-size:12px;width:100%;margin-bottom:14px">📝 标注提示词设置（首帧/尾帧生图下拉框内容）</button>
+
+      <div class="lbl" style="margin-bottom:6px">🎬 生视频模型 <span style="color:var(--mut);font-weight:400">（决定故事板生视频提示词的生成格式：Seedance 2.0 / MiniMax-H3）</span></div>
+      <div id="set-video-model" style="margin-bottom:14px"></div>
+
+      <div class="lbl" style="margin-bottom:6px">🧭 分镜主力线 <span style="color:var(--mut);font-weight:400">（做分镜时只走一条线：听风电影 / 虾镜拆镜）</span></div>
+      <div id="set-main-line" style="margin-bottom:14px"></div>
+
+      <div class="lbl" style="margin-bottom:6px">🖼 默认比例 <span style="color:var(--mut);font-weight:400">（生图弹窗按类别自动选中尺寸 · 视频弹窗自动选中比例，均可手动切换）</span></div>
+      <div id="set-default-sizes" style="margin-bottom:14px"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:14px">
+        <span style="flex:1;font-size:12px;color:var(--mut);align-self:center">保存后立即生效，生图弹窗的模型下拉自动更新</span>
+        <button class="btn-secondary" style="padding:7px 14px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:12px" onclick="closeSettings()">取消</button>
+        <button class="btn-secondary" style="padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600" onclick="commitChannels({closeSettings:true})">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 标注提示词设置窗口（★ 2026-08-23：首帧/尾帧生图下拉框内容，持久化） -->
+<div class="set-mask" id="anntags" onclick="if(event.target===this)closeAnnTagsSettings()">
+  <div class="set-box">
+    <div class="set-head">
+      <b>📝 标注提示词设置</b>
+      <span class="x" onclick="closeAnnTagsSettings()">×</span>
+    </div>
+    <div class="set-body">
+      <div style="font-size:12px;color:var(--mut);margin-bottom:10px;line-height:1.6">首帧/尾帧生成弹窗「标注提示词」下拉框内容（每条 = 标题 + 插入内容，插入到提示词光标处）。修改后点「💾 保存」，持久化到项目配置。</div>
+      <div id="anntags-list"></div>
+      <button class="add-btn" onclick="annTagsAddRow()" style="background:var(--bg);border:1px dashed var(--line);color:var(--mut);border-radius:6px;padding:7px;cursor:pointer;font-size:12px;width:100%;margin:10px 0 4px">+ 新增一条</button>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+        <button class="btn-secondary" style="padding:7px 14px;font-size:12.5px;cursor:pointer" onclick="closeAnnTagsSettings()">取消</button>
+        <button class="btn-primary" style="padding:7px 18px;font-size:12.5px;cursor:pointer;background:var(--acc);color:#fff;border:none;border-radius:8px;font-weight:600" onclick="annTagsSave()">💾 保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 渠道编辑器（右侧抽屉） -->
+<div class="ch-mask" id="ch-editor" onclick="if(event.target===this)closeChannelEditor()">
+  <div class="ch-panel">
+    <div class="set-head">
+      <b id="ch-title">新增渠道</b>
+      <span class="x" onclick="closeChannelEditor()">×</span>
+    </div>
+    <div class="ch-body">
+      <div class="lbl">渠道名称</div>
+      <input id="ch-name" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;margin-bottom:12px" placeholder="如：默认渠道 / LK888 / 方舟">
+
+      <div class="lbl">协议 <span style="color:var(--mut);font-weight:400">（切换自动带出默认 Base URL）</span></div>
+      <select id="ch-protocol" onchange="chProtocolChanged()" style="width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 8px;font-size:12px;margin-bottom:12px">
+        <option value="openai">OpenAI（标准 /v1 兼容）</option>
+        <option value="up_lk888">LK888（异步任务式中转）</option>
+        <option value="gemini">Gemini（Google）</option>
+        <option value="ark">火山方舟（ark.cn-beijing）</option>
+        <option value="minimax_h3">MiniMax H3（官方 · 视频生成）</option>
+      </select>
+
+      <div class="lbl">Base URL</div>
+      <input id="ch-baseurl" style="width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;margin-bottom:12px;font-family:monospace" placeholder="https://api.lk888.ai">
+
+      <div class="lbl">API Key</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <input id="ch-apikey" type="password" placeholder="sk-..." style="flex:1;padding:7px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:monospace">
+        <button class="btn-secondary" style="font-size:12px;padding:6px 10px" onclick="document.getElementById('ch-apikey').type = document.getElementById('ch-apikey').type==='password'?'text':'password'">👁</button>
+      </div>
+
+      <div class="lbl">模型列表 <span style="color:var(--mut);font-weight:400">（生图弹窗模型下拉）</span></div>
+      <div id="ch-models" style="margin-bottom:6px"></div>
+      <div style="display:flex;gap:6px;margin-bottom:12px">
+        <input id="ch-newmodel" placeholder="模型名（如 gpt-image-2）" onkeydown="if(event.key==='Enter'){chAddModel();event.preventDefault()}" style="flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px">
+        <button class="btn-secondary" style="font-size:12px;padding:6px 10px;white-space:nowrap" onclick="chAddModel()">+ 添加</button>
+        <button class="btn-secondary" style="font-size:12px;padding:6px 10px;white-space:nowrap" onclick="chFetchModels()">⛏ 拉取平台模型</button>
+        <button class="btn-secondary" style="font-size:12px;padding:6px 10px;white-space:nowrap" onclick="chTestConn()">🔌 测试连接</button>
+      </div>
+      <div id="ch-result" style="font-size:12px;color:var(--mut);margin-bottom:12px"></div>
+
+      <div id="ch-fetched-panel" style="display:none;border-top:1px dashed var(--line);padding-top:12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--mut);font-weight:500">📋 从平台拉取的模型（未添加）</span>
+          <span style="font-size:12px;color:var(--mut)" id="ch-fetched-stat"></span>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <button class="btn-secondary" style="font-size:12px;padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer" onclick="chFetchToggle(true)">全选</button>
+          <button class="btn-secondary" style="font-size:12px;padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer" onclick="chFetchToggle(false)">反选</button>
+          <button class="btn-secondary" style="font-size:12px;padding:5px 10px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer" onclick="chFetchSearch()">🔍 筛选</button>
+          <span style="flex:1"></span>
+          <button class="btn-secondary" style="font-size:12px;padding:5px 12px;background:var(--acc);color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600" onclick="chAddSelected()">✓ 添加选中到渠道</button>
+        </div>
+        <div id="ch-fetched-list" style="max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:6px 8px"></div>
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--line);padding-top:14px">
+        <button class="btn-secondary" style="padding:7px 14px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-size:12px" onclick="closeChannelEditor()">取消</button>
+        <button class="btn-secondary" style="padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600" onclick="chSave()">保存渠道</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="script-mask" id="script-mask" onclick="if(event.target===this)closeScriptEditor()">
+  <div class="script-box">
+    <div class="set-head">
+      <b id="script-title">调用脚本</b>
+      <span class="x" onclick="closeScriptEditor()">×</span>
+    </div>
+    <div class="script-body">
+      <div class="script-tip">
+        <b>可用变量：</b> apiKey · baseUrl · model · prompt · images（base64[]）· params（{size, raw_size, aspect_ratio}）<br>
+        <b>可用工具：</b> <code>http.post(path, body, opts?)</code> · <code>http.get(path, opts?)</code> · <code>poll(fetcher, isFinal, opts?)</code><br>
+        <b>必须返回：</b> <code>string[]</code>（图片 URL 或 dataURL）。脚本在 <b>后端 Node 沙箱</b>执行，可放心调 API（不暴露浏览器 CORS）。
+      </div>
+      <textarea id="script-text" class="script-textarea" spellcheck="false" placeholder="// 在此编写模型调用脚本…"></textarea>
+      <div id="script-result" style="font-size:12px;color:var(--mut)"></div>
+      <div style="display:flex;gap:8px;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer" onclick="insertScriptTemplate('openai')">插入 OpenAI 模板</button>
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer" onclick="insertScriptTemplate('gemini')">插入 Gemini 模板</button>
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px;border:1px solid var(--line);background:#fff;border-radius:6px;cursor:pointer" onclick="insertScriptTemplate('up_lk888')">插入 LK888 模板</button>
+          <button class="btn-secondary" style="font-size:12px;padding:6px 12px;border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:6px;cursor:pointer" onclick="clearScript()">清空（按协议默认）</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" style="font-size:12px;padding:7px 14px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer" onclick="closeScriptEditor()">取消</button>
+          <button class="btn-secondary" style="font-size:12px;padding:7px 14px;background:var(--acc);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600" onclick="saveScript()">保存脚本</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="gen-mask" id="gen" onclick="if(event.target===this)closeGen()">
+  <div class="gen-box">
+    <div class="gb-head">
+      <b>✨ AI 生成图片</b>
+      <span class="x" onclick="closeGen()">×</span>
+    </div>
+    <div class="gb-body">
+      <div class="lbl" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">📝 提示词 <span style="color:var(--mut);font-weight:400">（可编辑）</span>
+        <span style="flex:1"></span>
+        <span id="gen-ann-tag-wrap" style="display:none;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--mut)">标注提示词</span>
+          <select id="gen-ann-tag" style="font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--txt);max-width:340px" onchange="genInsertAnnTag(this)"></select>
+        </span>
+      </div>
+      <details id="gen-prompt-cn-wrap" style="display:none;margin:0 0 8px"><summary style="cursor:pointer;font-size:12px;font-weight:600;color:#0f766e;user-select:none;padding:6px 10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px">📝 中文参考稿（理解用 · 生图执行以下方英文为准 · 只读）</summary><div id="gen-prompt-cn-body" style="padding:8px 10px;border:1px solid #99f6e4;border-top:none;border-radius:0 0 8px 8px;font-size:12.5px;line-height:1.7;color:#334155;white-space:pre-wrap;background:#f8fffe"></div></details>
+      <textarea id="gen-prompt" rows="11" spellcheck="false" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;line-height:1.6;font-family:inherit;resize:vertical;min-height:240px"></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin:2px 0 10px"><button class="btn-secondary" style="font-size:12px;padding:2px 8px" onclick="savePrompt()" title="把当前提示词保存到该资产/Beat，下次打开或生成用修改后的版本">💾 保存提示词</button><button class="btn-secondary" style="font-size:12px;padding:2px 8px" onclick="resetGenPrompt()">↺ 恢复默认提示词</button></div>
+
+      <div id="gen-lock-hint" style="display:none;margin:0 0 8px;padding:6px 10px;background:var(--acc-soft);border:1px solid #C4B5FD;border-radius:8px;font-size:12px;color:var(--acc2);line-height:1.5">🔒 身份图自动锁脸：将自动读取主图作为第 1 张垫图（ref[0]），你上传的参考图从第 2 张开始</div>
+      <div class="lbl">🖼 添加图片（垫图/图生图，可选 · 最多 9 张）<span id="gen-ref-count" style="color:var(--mut);font-weight:400;margin-left:6px"></span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <label class="btn-secondary" style="cursor:pointer;padding:5px 12px;font-size:12px">⬆ 上传参考图
+          <input type="file" id="gen-ref" accept="image/*" multiple style="display:none" onchange="genRefPicked(this)">
+        </label>
+        <button class="btn-secondary" style="cursor:pointer;padding:5px 12px;font-size:12px" onclick="openRefPicker()">📂 选择参考图</button>
+        <label class="btn-secondary" id="gen-outfit-btn" style="cursor:pointer;padding:5px 12px;font-size:12px;display:none;border:1px solid #d4af6a;color:#b45309" title="身份定妆照：添加服装参考图（自动作为第 2 张参考，提示词自动追加「服装优先」规则）">🛍 服装参考
+          <input type="file" id="gen-outfit" accept="image/*" style="display:none" onchange="genOutfitRefPicked(this)">
+        </label>
+        <button class="btn-secondary" style="font-size:12px;padding:2px 8px;display:none" id="gen-ref-clear" onclick="genRefClear()">× 全部移除</button>
+      </div>
+      <div id="gen-ref-preview" style="display:none;margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px"></div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div>
+          <div class="lbl">🧠 模型</div>
+          <select id="gen-model" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px"></select>
+        </div>
+        <div>
+          <div class="lbl">📐 图片比例</div>
+          <select id="gen-size" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px"></select>
+        </div>
+      </div>
+
+      <button id="gen-send" class="btn-primary" style="width:100%;padding:9px;border:none;border-radius:8px;background:var(--acc);color:#fff;font-size:13px;font-weight:600;cursor:pointer" onclick="genSend()">✨ 发送生成</button>
+      <div id="gen-result" style="margin-top:10px;display:none"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 场景切换视角弹窗（★ 2026-08-20：6 视角多选，每视角一个生图任务） -->
+<div class="gen-mask" id="scenemodal" onclick="if(event.target===this)closeSceneViewModal()">
+  <div class="gen-box" style="width:520px;">
+    <div class="gb-head">
+      <b>↔ 切换视角</b>
+      <span class="x" onclick="closeSceneViewModal()">×</span>
+    </div>
+    <div id="sv-name" style="font-size:13px;color:var(--txt);margin-top: 8px;margin-bottom:4px;padding-left: 20px; padding-right: 20px;">"></div>
+    <div id="sv-tip" style="font-size:12px;color:var(--mut);margin-bottom:10px;padding-left: 20px; padding-right: 20px;">以所选参考图生成多视角画面（可多选，已生成的视角也可再次生成、将替换旧图），每个视角生成一张图。固定提示词不可修改。</div>
+    <div id="sv-ref" style="padding-left: 20px; padding-right: 20px; margin-bottom:10px;"></div>
+    <div id="sv-options" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px; padding-left: 20px; padding-right: 20px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end; margin-bottom: 20px;padding-left: 20px; padding-right: 20px;">
+      <button class="btn-secondary" style="padding:7px 14px;font-size:12.5px;cursor:pointer" onclick="closeSceneViewModal()">取消</button>
+      <button class="btn-primary" style="padding:7px 18px;font-size:12.5px;cursor:pointer;background:var(--acc);color:#fff;border:none;border-radius:8px;font-weight:600" onclick="sceneViewSend()">🚀 发送生成</button>
+    </div>
+  </div>
+</div>
+<!-- 生视频弹窗（★ 2026-08-23 故事板 → 视频成片位 → 🎬 生视频。★ 2026-08-24 明确为「视频生成」界面，区别于生图弹窗） -->
+<div class="gen-mask" id="genvideo" onclick="if(event.target===this)closeGenVideoModal()">
+  <div class="gen-box" style="width:960px;max-width:94vw">
+    <div class="gb-head">
+      <b>🎬 生视频 · <span id="gv-title">视频</span></b>
+      <span class="x" onclick="closeGenVideoModal()">×</span>
+    </div>
+    <div style="padding:8px 20px;font-size:12px;font-weight:600;color:#5b21b6;background:#ede9fe;border-bottom:1px solid #c4b5fd">🎥 这是「视频生成」窗口 —— 提交后将生成 <b>.mp4 视频文件</b>（不是图片）。下方参考图用于视频生成参考，最终成片是视频。</div>
+    <div style="padding:12px 20px;font-size:12px;color:var(--txt);background:var(--bg);border-bottom:1px solid var(--line)" id="gv-info">段头：</div>
+    <div class="lbl" style="display:flex;align-items:center;gap:8px;padding:10px 20px 6px">
+      📝 视频提示词
+      <span style="flex:1"></span>
+      <button class="btn-secondary" style="font-size:12px;padding:3px 10px" onclick="gvCopyPrompt()">📋 复制</button>
+    </div>
+    <div style="padding:0 20px 8px">
+      <textarea id="gv-prompt" rows="10" oninput="gvPromptChange()" style="width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:14px;line-height:1.6;font-family:inherit;resize:vertical;min-height:220px"></textarea>
+    </div>
+    <div class="lbl" style="padding:0 20px 6px">🖼 视频参考图（最多 5 张 · 用于视频生成参考）<span id="gv-ref-count" style="color:var(--mut);font-weight:400;margin-left:6px"></span></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:0 20px 10px;flex-wrap:wrap">
+      <label class="btn-secondary" style="cursor:pointer;padding:5px 12px;font-size:12px">⬆ 上传参考图
+        <input type="file" id="gv-ref" accept="image/*" multiple style="display:none" onchange="gvRefPicked(this)">
+      </label>
+      <button class="btn-secondary" style="cursor:pointer;padding:5px 12px;font-size:12px" onclick="gvOpenRefPicker()" title="从资产图库选择视频参考图（视频生成参考用，非生图）">📂 选择视频参考图</button>
+      <button class="btn-secondary" id="gv-ref-clear" style="font-size:12px;padding:2px 8px;display:none" onclick="gvRefClear()">× 全部移除</button>
+    </div>
+    <div id="gv-ref-preview" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 10px"></div>
+    <div id="gv-ref-tip" style="display:none;margin:0 20px 10px;padding:6px 10px;background:rgba(217,119,6,.12);border:1px solid rgba(217,119,6,.45);border-radius:8px;font-size:11px;color:#b45309;line-height:1.5">⚠️ 手动添加的参考图插在自动图之间，会破坏与提示词 <code style="font-family:monospace">&lt;Picture N&gt;</code> 的编号对齐（提示词仍按「角色→场景→道具」顺序声明）。建议：移除手动图后「重生成视频提示词」，或在弹窗内核对每张图的编号标签。</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;padding:0 20px 12px">
+      <div>
+        <div class="lbl">🧠 视频引擎（生成视频的模型）</div>
+        <select id="gv-model" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px">
+          <option value="hailuo-h3-cankaosheng">海螺 H3 视频 · 参考生</option>
+          <option value="hailuo-h3-quannengcankao">海螺 H3 视频 · 全能参考</option>
+        </select>
+      </div>
+      <div>
+        <div class="lbl">📐 视频尺寸</div>
+        <select id="gv-size" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px"></select>
+      </div>
+      <div>
+        <div class="lbl">⏱ 时长（默认按提示词）</div>
+        <select id="gv-duration" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px"></select>
+      </div>
+      <div>
+        <div class="lbl">🎞 分辨率（默认 768P）</div>
+        <select id="gv-resolution" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px"></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 20px 20px;border-top:1px solid var(--line);background:var(--bg)">
+      <button class="btn-secondary" style="padding:7px 14px;font-size:12.5px;cursor:pointer" onclick="closeGenVideoModal()">取消</button>
+      <button id="gv-send" class="btn-primary" style="width:100%;padding:9px;border:none;border-radius:8px;background:var(--acc);color:#fff;font-size:13px;font-weight:600;cursor:pointer" onclick="gvStart()">🚀 启动生视频</button>
+    </div>
+  </div>
+</div>
+
+<!-- 场景视距弹窗（★ 2026-08-22：每张场景图 👁️ 按钮 → 前移/后移 1/2/3/5/10 米多选批量生成） -->
+<div class="gen-mask" id="viewdistmodal" onclick="if(event.target===this)closeViewDistModal()">
+  <div class="gen-box" style="width:560px;">
+    <div class="gb-head">
+      <b>👁️ 视距</b>
+      <span class="x" onclick="closeViewDistModal()">×</span>
+    </div>
+    <div id="vd-name" style="font-size:13px;color:var(--txt);margin-top:8px;margin-bottom:4px;padding-left:20px;padding-right:20px;"></div>
+    <div id="vd-tip" style="font-size:12px;color:var(--mut);margin-bottom:10px;padding-left:20px;padding-right:20px;">基于当前图生成视距变体（推拉/航拍，可多选），每个视距生成一张图。固定提示词不可修改。</div>
+    <div id="vd-dists" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding-left:20px;padding-right:20px;"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin:16px 0 20px;padding-left:20px;padding-right:20px;">
+      <button class="btn-secondary" style="padding:7px 14px;font-size:12.5px;cursor:pointer" onclick="closeViewDistModal()">取消</button>
+      <button class="btn-primary" style="padding:7px 18px;font-size:12.5px;cursor:pointer;background:var(--acc);color:#fff;border:none;border-radius:8px;font-weight:600" onclick="viewDistSend()">🚀 发送生成</button>
+    </div>
+  </div>
+</div>
+<!-- 选择参考图弹窗 -->
+<div class="gen-mask" id="refpicker" onclick="if(event.target===this)closeRefPicker()">
+  <div class="gen-box" style="width:760px">
+    <div class="gb-head">
+      <b>📂 选择参考图</b>
+      <span class="x" onclick="closeRefPicker()">×</span>
+    </div>
+    <div class="gb-body">
+      <div id="refp-tabs" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap"></div>
+      <div id="refp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;max-height:58vh;overflow:auto;padding:2px"></div>
+      <div id="refp-empty" style="display:none;text-align:center;color:var(--mut);font-size:12px;padding:40px 0">该分类下暂无已生成的图片</div>
+    </div>
+  </div>
+</div>
+
+<!-- 资产下载弹窗（★ 2026-08-22 用户需求：Tab 角色/道具/场景/首帧/尾帧/视频 · 全选 · 打包下载；tab 选中隔离） -->
+<div class="gen-mask" id="assetdl" onclick="if(event.target===this)closeAssetDownload()">
+  <div class="gen-box" style="width:840px">
+    <div class="gb-head">
+      <b>📥 资产下载</b>
+      <span class="x" onclick="closeAssetDownload()">×</span>
+    </div>
+    <div class="gb-body">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+        <span id="asdl-tabs" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+        <div style="flex:1"></div>
+        <button class="pill" id="asdl-all" type="button" style="font-size:12px;padding:6px 12px" onclick="assetDlToggleAll()">☑ 全选</button>
+      </div>
+      <div id="asdl-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-height:50vh;overflow:auto;padding:2px"></div>
+      <div id="asdl-empty" style="display:none;text-align:center;color:var(--mut);font-size:12px;padding:30px 0">该分类下暂无已生成的图片</div>
+      <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:12px;gap:10px">
+        <span id="asdl-count" style="font-size:12px;color:var(--mut)">已选 0 张</span>
+        <button class="pill primary" id="asdl-dl" type="button" style="font-size:12px;padding:7px 14px" onclick="assetDlStart()">⬇ 下载选中</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 资产双击全屏预览（★ 2026-08-24 新增：图片放大 / 视频全屏播放） -->
+<div class="gen-mask" id="asdl-preview" onclick="if(event.target===this)asdlPreviewClose()">
+  <div class="asdl-pv-body" style="display:flex;align-items:center;justify-content:center;max-width:94vw;max-height:90vh"></div>
+  <span class="x" style="position:fixed;top:18px;right:24px;font-size:32px;color:#fff;cursor:pointer;z-index:2" onclick="asdlPreviewClose()">×</span>
+</div>
+
+<!-- 底部任务队列面板（2026-08-20 拆分时 body 提取漏掉，按 CSS/JS 重建） -->
+<div class="taskbar" id="taskbar" onclick="toggleTaskbar()">
+  <div class="tb-line-wrap">
+    <span class="tb-ico">🎬</span>
+    <span class="tb-line" id="taskbar-line">无任务（队列上限 5）</span>
+    <span class="tb-badge" id="taskbar-badge">0</span>
+    <button class="tb-mini" id="taskbar-mini">▾ 任务队列</button>
+  </div>
+  <div class="tb-body">
+    <div class="tb-col">
+      <div class="tb-sec running">⏳ 任务中 <span class="n" id="tb-running-n">0</span></div>
+      <div class="tb-col-list" id="tb-running"></div>
+    </div>
+    <div class="tb-col">
+      <div class="tb-sec done">✅ 任务完成 <span class="n" id="tb-done-n">0</span></div>
+      <div class="tb-col-list" id="tb-done"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 画面标注弹窗（2026-08-20 新增：Beat 级画面标注工具） -->
+<!-- 画面标注弹窗（2026-08-20 改为 openAnnModal 动态注入 body，防静态 DOM 缺失/缓存旧页问题） -->
+
+<script>
+// 数据源已切换为 SQLite：前端通过 GET /api/data 从数据库异步加载（替代原 data.js）。
+// 需服务模式（双击启动项目台.bat）运行；静态模式（file://）无法读取数据库。
+</script>
+<script src="js/core.js?v=20260901c"></script>
+<script src="js/gen.js?v=20260906c"></script>
+<script src="js/agent.js?v=20260823bz"></script>
+<script src="js/xiage.js?v=20260908b"></script>
+<script src="js/xialiao.js?v=20260904a"></script>
+<script src="js/xiatang.js?v=20260906c"></script>
+<script src="js/xiajing.js?v=20260902b"></script>
+<script src="js/xiaju.js?v=20260905a"></script>
+<script src="js/tingfeng.js?v=20260906c"></script>
+<script src="js/ann.js?v=20260823bz"></script>
+<script src="js/init.js?v=20260901b"></script>
+</body>
+</html>

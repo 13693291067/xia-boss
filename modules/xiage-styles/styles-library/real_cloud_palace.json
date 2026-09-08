@@ -1,0 +1,27 @@
+{
+  "style_id": "real_cloud_palace",
+  "style_label": "写实电影·云景仙宫",
+  "family": "B",
+  "style_tag": "CINEMATIC FILMIC REALISM",
+  "style_instructions": "Create a live-action cinematic image with grounded physical realism, natural lighting appropriate to the time of day with soft realistic falloff and restrained contrast, realistic human skin with visible pores, subtle uneven tone and minor imperfections, no beauty retouching, not a plastic idol face, natural slightly asymmetric bone structure, a natural cinematic lens feel with moderate depth of field, restrained color grading with film texture; only the rendering medium is affected, not the described wardrobe, era, or setting.",
+  "avoid_instructions": "FORBIDDEN: anime, cartoon, illustration styles, plastic skin, airbrushed texture, AI artifacts, oversaturated HDR, extra limbs, mutated hands, deformed faces, text, watermarks, labels.",
+  "visual_references": [
+    {
+      "name": "天界宫阙概念参考（通用占位）",
+      "note": "白玉鎏金巨柱长廊、雕龙石栏、瀑布落云海、暖金逆光体积光",
+      "infusion": "gargantuan overwhelming monumental scale, cool marble-white with vermilion and gilded accents, blinding golden backlight, deep atmospheric haze over an infinite cloud sea"
+    }
+  ],
+  "tonal_direction": "恢弘缥缈·仙气磅礴",
+  "keyframe": {
+    "figure": "a serene celestial temple guardian, elongated calm eyes, luminous fair skin, hair bound in a high crown with a gold ornament, a white-and-jade layered robe collar",
+    "environment": "a colossal celestial immortal palace of incomprehensible scale floating high above an infinite sea of clouds, an endless one-point-perspective colonnade of white marble columns each hundreds of meters tall with gilded capitals and vermilion carved columns receding for kilometers into haze, a vast polished marble terrace lined with enormous carved dragon-head balustrade posts, gilded multi-tiered palace halls and pagoda towers the size of mountains, immense waterfalls cascading off the far cliff edge into the cloud sea thousands of meters below, tiny distant pagodas reduced to specks against a blinding golden sunrise",
+    "color_relationship": "冷白玉+朱红+古金主体 vs 暖金云海背景，超广角仰拍+极小人影衬巨物尺度（含人影=关键场景，纯空镜不放人）"
+  },
+  "preview_prompt": "Create a live-action cinematic film still with grounded physical realism, a natural ultra-wide cinematic lens, deep depth of field, restrained filmic color grading. A gargantuan celestial immortal palace of incomprehensible colossal scale floating high above an infinite sea of clouds, an endless one-point-perspective colonnade of white marble columns each hundreds of meters tall with gilded capitals and vermilion carved columns receding for kilometers and dissolving into distant haze, a vast polished marble terrace lined with enormous carved dragon-head balustrade posts, gilded multi-tiered palace halls and pagoda towers the size of mountains, immense waterfalls cascading off the far cliff edge into the cloud sea thousands of meters below, tiny distant pagodas reduced to specks against a blinding golden sunrise; a single tiny robed figure standing on the vast terrace, dwarfed to an ant by the colossal palace, conveying its overwhelming monumental scale. Ultra-wide low-angle establishing shot, volumetric god rays, deep atmospheric haze, cool marble-white with vermilion and gilded accents. FORBIDDEN: anime, cartoon, illustration styles, plastic skin, airbrushed texture, AI artifacts, oversaturated HDR, text, watermarks, labels.",
+  "preview_image": "real_cloud_palace.png",
+  "is_library_entry": true,
+  "tier": "skill",
+  "source": "参考图验证 2026-09-08",
+  "confirmed_by_user": true
+}

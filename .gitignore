@@ -1,0 +1,17 @@
+# 编译缓存（pyc 会藏字符串字面量，勿入库）
+__pycache__/
+*.py[cod]
+
+# 本地项目产物 / 数据库（技能目录应通用，不该带具体项目数据）
+*.db
+*.sqlite
+*.sqlite3
+.trash/
+
+# 编辑器 / 操作系统杂项
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/

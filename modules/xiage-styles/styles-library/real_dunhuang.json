@@ -1,0 +1,27 @@
+{
+  "style_id": "real_dunhuang",
+  "style_label": "写实电影·敦煌神话",
+  "family": "B",
+  "style_tag": "CINEMATIC FILMIC REALISM",
+  "style_instructions": "Create a live-action cinematic image with grounded physical realism, natural lighting appropriate to the time of day with soft realistic falloff and restrained contrast, realistic human skin with visible pores, subtle uneven tone and minor imperfections, no beauty retouching, not a plastic idol face, natural slightly asymmetric bone structure, a natural cinematic lens feel with moderate depth of field, restrained color grading with film texture; only the rendering medium is affected, not the described wardrobe, era, or setting.",
+  "avoid_instructions": "FORBIDDEN: anime, cartoon, illustration styles, plastic skin, airbrushed texture, AI artifacts, oversaturated HDR, extra limbs, mutated hands, deformed faces, text, watermarks, labels.",
+  "visual_references": [
+    {
+      "name": "敦煌飞天与石窟参考（通用占位）",
+      "note": "飞天高饱和矿物色服装 vs 素净砂岩洞窟的强色彩反差",
+      "infusion": "strong color contrast — a highly saturated jewel-toned figure in brilliant cinnabar red, peacock green and bright orange popping out against a muted desaturated earthy-ochre sandstone grotto, weathered faded fresco texture, warm golden backlight with volumetric dust haze, monumental grotto scale"
+    }
+  ],
+  "tonal_direction": "瑰丽庄严·壁画飞天·大漠苍茫",
+  "keyframe": {
+    "figure": "a real photographed young Dunhuang apsara dancer mid-dance, natural skin with visible pores and no beauty retouching, not a plastic idol face, red forehead mark, high ornate chignon with a gilded openwork crown and dangling gold ornaments, jeweled necklace, highly saturated jewel-toned costume of brilliant cinnabar-red and vivid peacock-green patterned silk with long trailing ribbons in bright orange and turquoise, bare-midriff wrapped skirt, holding a pipa lute in the reversed-pipa dance pose",
+    "environment": "a vast Dunhuang grotto with a domed caisson ceiling painted with a faded lotus and tiered earthy-ochre walls of niches and weathered Buddha murals; and outside, a colossal ancient Buddha carved into a wind-eroded sandstone cliff between towering cave-temple walls, desert dunes beyond, monumental scale",
+    "color_relationship": "★ 主体高饱和宝石色（朱砂红/孔雀绿/亮橙）从低饱和土砂岩洞窟里跳出，强色彩反差——禁止把主体色并进 overall tone 把整张染糊"
+  },
+  "preview_prompt": "Create a live-action cinematic film still with grounded physical realism, a natural cinematic lens with shallow depth of field, restrained filmic color grading. A real photographed young Dunhuang apsara dancer mid-dance, natural skin with visible pores and no beauty retouching, not a plastic idol face, a red forehead mark, hair in a high ornate chignon with a gilded openwork crown and dangling gold ornaments, a jeweled necklace; wearing a highly saturated jewel-toned costume of brilliant cinnabar-red and vivid peacock-green patterned silk with long trailing ribbons in bright orange and turquoise, a bare-midriff wrapped skirt — her brilliant saturated colors pop with strong contrast against the muted, desaturated warm sandstone grotto behind her. She holds a pipa lute in the classic reversed-pipa dance pose inside a vast Dunhuang cave with a domed caisson ceiling painted with a faded lotus and tiered earthy-ochre walls of niches and weathered murals, warm directional light with drifting dust. Strong color contrast: a vivid jewel-toned figure against a subdued earthy environment. FORBIDDEN: anime, cartoon, illustration styles, plastic skin, airbrushed texture, AI artifacts, oversaturated HDR, extra limbs, mutated hands, deformed faces, text, watermarks, labels.",
+  "preview_image": "real_dunhuang.png",
+  "is_library_entry": true,
+  "tier": "skill",
+  "source": "参考图验证 2026-09-08",
+  "confirmed_by_user": true
+}

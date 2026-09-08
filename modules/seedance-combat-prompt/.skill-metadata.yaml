@@ -1,0 +1,67 @@
+examples:
+  - id: generate-combat-prompt
+    title:
+      zh: 生成打戏提示词
+      en: Generate Combat Prompt
+    description:
+      zh: 给定双方角色与要求，直接生成 15 秒 Seedance 打戏提示词
+      en: Generate a 15-second Seedance fight prompt for two given characters
+    prompt:
+      zh: |-
+        请帮我生成一条 15 秒seedance直接可以生成的打戏提示词，直接返回提示词就可以。
+        角色A：{{角色A，如 雷电}}
+        角色B：{{角色B，如 白鸽}}
+        场景：{{场景，如 雨夜天台}}
+        视觉风格：{{视觉风格，如 3D国漫风格}}
+        战斗节奏：{{碾压/拉锯/逆转}}
+        结局：{{谁获胜}}
+        特殊要求：{{可选，如 需要肘技、不断走位}}
+      en: |-
+        Please generate a 15-second Seedance-ready combat prompt and return the prompt directly.
+        Character A: {{character A, e.g. Leidian}}
+        Character B: {{character B, e.g. Baige}}
+        Scene: {{scene}}
+        Visual style: {{visual style}}
+        Combat pacing: {{crush / seesaw / comeback}}
+        Outcome: {{winner}}
+        Special requirements: {{optional}}
+  - id: list-characters
+    title:
+      zh: 查看可用角色
+      en: List Available Characters
+    description:
+      zh: 列出 9 个角色的绑定拳法、定位与风格描述
+      en: List the nine characters with their martial arts, roles and styles
+    prompt:
+      zh: 有哪些角色？请列出所有角色的名称和他们相对应绑定的拳法、定位、风格描述。
+      en: What characters are available? List all characters with their martial arts, roles and style descriptions.
+  - id: pick-style-and-scene
+    title:
+      zh: 推荐风格与场景
+      en: Recommend Style and Scene
+    description:
+      zh: 未定风格/场景时，列出可选风格与场景参考
+      en: List selectable visual styles and scene options when undecided
+    prompt:
+      zh: 我想生成打戏但风格和场景还没想好，请列出可选择的视觉风格和打斗场景参考，并给我推荐两套搭配。
+      en: I want a combat prompt but haven't decided on style or scene. List the visual styles and scene options and recommend two combinations.
+  - id: list-martial-arts
+    title:
+      zh: 查询武学招式库
+      en: Query Martial Arts Library
+    description:
+      zh: 按拳/踢技/剑技/刀技分类查看武学与招式表格
+      en: Browse martial arts and move tables by category
+    prompt:
+      zh: 有哪些武学？我想看{{分类，如 踢技/剑技/拳术}}的招式列表，请按招式、动作描述、攻击轨迹、视觉价值、主战/破招/终结的表格格式输出。
+      en: What martial arts are available? Show the {{category, e.g. kicks / swords / fists}} move list in a table with move, action description, trajectory, visual value, and role (main / counter / finisher).
+  - id: create-new-character
+    title:
+      zh: 创建新角色
+      en: Create New Character
+    description:
+      zh: 走技法总览→绑定→分配→角色卡的四步建角流程
+      en: Run the four-step character creation flow (technique overview, binding, allocation, card)
+    prompt:
+      zh: 我想创建一个新角色：{{角色名}}，请按角色创建流程先展示技法总览让我选择绑定技法，再帮我分配主战/破招/终结招式并生成角色卡。
+      en: I want to create a new character: {{name}}. Follow the character-creation flow: show the technique overview first for binding selection, then allocate main/counter/finisher moves and generate the character card.

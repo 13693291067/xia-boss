@@ -1,0 +1,27 @@
+{
+  "style_id": "real_song",
+  "style_label": "写实电影·宋式美学",
+  "family": "B",
+  "style_tag": "CINEMATIC FILMIC REALISM",
+  "style_instructions": "Create a live-action cinematic image with grounded physical realism, natural lighting appropriate to the time of day with soft realistic falloff and restrained contrast, realistic human skin with visible pores, subtle uneven tone and minor imperfections, no beauty retouching, not a plastic idol face, natural slightly asymmetric bone structure, a natural cinematic lens feel with moderate depth of field, restrained color grading with film texture; only the rendering medium is affected, not the described wardrobe, era, or setting.",
+  "avoid_instructions": "FORBIDDEN: anime, cartoon, illustration styles, plastic skin, airbrushed texture, AI artifacts, oversaturated HDR, extra limbs, mutated hands, deformed faces, text, watermarks, labels.",
+  "visual_references": [
+    {
+      "name": "宋韵美学参考（通用占位）",
+      "note": "素雅青瓷月白、暖金逆光、薄纱素麻、克制内敛",
+      "infusion": "muted celadon and moon-white palette, warm golden backlight with volumetric haze, sheer silk and natural linen texture, restrained understated Song elegance, real human skin, no glamour"
+    }
+  ],
+  "tonal_direction": "素雅内敛·诗意静谧·书卷气",
+  "keyframe": {
+    "figure": "a real photographed young Song-dynasty noblewoman, soft oval face, gentle cheekbones, slightly asymmetric natural jaw, natural skin with visible pores and no beauty retouching, not a plastic idol face, serene downcast eyes, a small red pearl forehead flower and faint pearl face-dimple dots, hair in a high Song chignon with a pearl crown, gold hairpins and dangling buyao tassels, wearing a plain moon-white Song beizi over-robe with a straight crossed collar over a pale celadon moxiong and a soft pleated skirt",
+    "environment": "a classical Jiangnan garden, a round moon gate, weathered taihu scholar rocks, a lotus pond and stone arch bridge, bamboo and weeping willows, a timber pavilion with grey tiled roof and white walls",
+    "color_relationship": "人物与园林同为低饱和青瓷月白暖木灰绿、整体克制素净（宋式无需艳色反差）"
+  },
+  "preview_prompt": "Create a live-action cinematic film still with grounded physical realism, warm golden backlight with soft volumetric haze and dappled tree shadows, a natural 85mm cinematic lens with shallow depth of field, restrained filmic color grading with subtle grain. A real photographed young Song-dynasty noblewoman with a soft oval face, gentle cheekbones, a slightly asymmetric natural jaw, real skin with visible pores and no beauty retouching, not a plastic idol face; serene downcast eyes, a small red pearl forehead flower and faint pearl face-dimple dots, hair in a high Song chignon with a pearl crown, gold hairpins and dangling buyao tassels; wearing a plain moon-white Song beizi over-robe with a straight crossed collar over a pale celadon moxiong and a soft pleated skirt, muted celadon and lotus-root palette, sheer silk and natural linen texture. She stands demurely beside a round moon gate in a classical Jiangnan garden, weathered taihu scholar rocks, a lotus pond and stone arch bridge, bamboo and weeping willows, a timber pavilion with grey tiled roof and white walls. The reserved, scholarly, understated temperament of a Song lady, quiet and unglamorous. FORBIDDEN: anime, cartoon, illustration styles, plastic skin, airbrushed texture, AI artifacts, oversaturated HDR, extra limbs, mutated hands, deformed faces, text, watermarks, labels.",
+  "preview_image": "real_song.png",
+  "is_library_entry": true,
+  "tier": "skill",
+  "source": "参考图验证 2026-09-08",
+  "confirmed_by_user": true
+}

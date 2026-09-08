@@ -1,0 +1,80 @@
+{
+  "channels": [
+    {
+      "id": "default",
+      "name": "888",
+      "baseUrl": "https://api.lk888.ai",
+      "apiKey": "",
+      "apiFormat": "up_lk888",
+      "models": [
+        {
+          "name": "gpt-image-2",
+          "script": "// up.lk888 异步任务式：建任务 → 轮询 → 下载\nconst submit = await http.post('media/generate', {\n  model, prompt,\n  params: { aspect_ratio: params.size, size: params.raw_size, images: images || [], n: 1, response_format: 'url', quality: 'auto' },\n});\nconst taskId = submit?.data?.task_id || submit?.task_id;\nif (!taskId) throw new Error('未返回 task_id：' + JSON.stringify(submit).slice(0, 300));\nconst result = await poll(\n  () => http.get('media/status?task_id=' + taskId),\n  res => {\n    const d = res?.data || res;\n    return d?.is_final === true;\n  },\n  { intervalMs: 8000, timeoutMs: 600000 }\n);\nconst finalData = result?.data || result;\nif (finalData?.state === 'failed') throw new Error(finalData.error || JSON.stringify(result));\nconst url = finalData?.result_url;\nif (!url) throw new Error('is_final=true 但 result_url 缺失: ' + JSON.stringify(result));\nreturn [url];"
+        },
+        {
+          "name": "gpt-image-1",
+          "script": ""
+        }
+      ]
+    }
+  ],
+  "sizes": [
+    {
+      "value": "auto",
+      "label": "auto（自适应）"
+    },
+    {
+      "value": "1024x1024",
+      "label": "1024x1024（正方形 1:1）"
+    },
+    {
+      "value": "1024x1536",
+      "label": "1024x1536（竖版 2:3）"
+    },
+    {
+      "value": "1536x1024",
+      "label": "1536x1024（横版 3:2）"
+    },
+    {
+      "value": "960x1280",
+      "label": "960x1280（竖版 3:4）"
+    },
+    {
+      "value": "1280x960",
+      "label": "1280x960（横版 4:3）"
+    },
+    {
+      "value": "1088x1920",
+      "label": "1088x1920（竖版 9:16）"
+    },
+    {
+      "value": "1920x1088",
+      "label": "1920x1088（横版 16:9）"
+    },
+    {
+      "value": "1024x1280",
+      "label": "1024x1280（竖版 4:5）"
+    },
+    {
+      "value": "1280x1024",
+      "label": "1280x1024（横版 5:4）"
+    },
+    {
+      "value": "960x1920",
+      "label": "960x1920（竖版 1:2）"
+    },
+    {
+      "value": "1920x960",
+      "label": "1920x960（横版 2:1）"
+    }
+  ],
+  "default_sizes": {
+    "character": "960x1280",
+    "identity": "1088x1920",
+    "scene": "1920x960",
+    "prop": "1280x960",
+    "sketch_frame": "1088x1920",
+    "video": "9:16"
+  },
+  "video_model": "seedance"
+}
