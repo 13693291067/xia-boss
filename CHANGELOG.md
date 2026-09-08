@@ -4,7 +4,110 @@
 
 ---
 
+> **★ 2026-09-09 回填说明（读这三条再看下面的条目）**
+> 1. **依据**：以下条目为补记，逐条以**包内可核对证据**（文件头 ★ 标记、带后缀版本标签、契约字段、脚本注释）反推，并在每条末尾列 `证据` 路径；不写包内查无实据的内容。
+> 2. **日期**：有 ★ 日期者照记；3.2.0 / 3.2.1 / 3.2.2 包内只有版本号无日期，标「日期未标」不猜。
+> 3. **编号约定报备**：`3.4.0` 当次出现**两个并行标签**——裸 `3.4.0`（画面语法横切）与 `v3.4.0-风格库`（虾格风格挂载库，包内 25 处引用）。这是并发会话撞号后按"带后缀不裸用版本号"约定的处置，**保留现状不重编号**：重编号会断掉 25 处已落地的带后缀引用。
+
+## 3.4.5-风格库脱敏门禁 — 2026-09-09
+
+主题：补最高纪律的位置漏洞——**风格库条目此前无机械脱敏校验**。
+
+- **背景（自检揪出的洞）**：禁止项目数据纪律的锚定示例白名单（2026-09-02 定）只覆盖 `modules/<模块>/references/`，
+  而 v3.4.0-风格库 新增的 `modules/xiage-styles/styles-library/` 不在名单内；库自身"入库前必须剥离剧名/角色/
+  专有世界观词"的规则只靠人自觉，无脚本把关。现有 3 条种子条目实测干净（`style_label` 为美学流派名、
+  `visual_references.name` 标「通用占位」、`source` 只有"参考图验证 <日期>"），属**规则文字滞后于特性**，非数据污染。
+- **新增 `scripts/check-style-library.py`**：结构校验 + 脱敏校验。项目词表**动态取自项目自身数据**
+  （`project/xiaji.db` 的 `snapshots` 表 meta/xiatang 名称 + `pipeline-state.json` 的 project，可用 `--word` 追加），
+  脚本内零硬编码项目词，符合生成脚本零硬编码纪律；`--layer seed|user|all`、`--dir` 可校任意目录；
+  输出无 emoji（GBK 控制台安全）。
+- **最高纪律第 1 条白名单**：显式纳入 `styles-library/`，并写明豁免**以条目已脱敏为硬前提**、验收以该脚本退出码 0 为准。
+- **虾格 §0.2.6 写回步骤**：加"入库硬门禁"条——写回用户层/提升种子层前必须跑该脚本且退出码 0。
+- **门禁不空转实证**（改脚本必复跑真实数据的纪律）：真种子层 3 条 → P0=0 P1=0 PASS；另建投毒条目
+  （含《剧名》、角色名、场景名）→ 同一命令下 P1=2（书名号）、加词表后 P0=3（style_label/figure/environment 命中），
+  报错数随输入变化，确认检出真实生效。
+
+## 3.4.4-Xuan酱速查 — 2026-09-09
+
+主题：《AI视频做电影感》（B 站 Xuan酱 11 集）学习笔记评估与**最小增量接入**——该课为入门菜单型，与已有三横切（老白/造梦师/运镜层）高度重叠，仅两处按其"速查表"形态值得捞。
+
+- **`shared-storyboard-craft.md` §五附**：新增「情节型景别组接速查八式」（P11 蒸馏，八种情节类型的默认景别序列 + 入场/离场镜像口诀），定位为 §五第 3 点"渐松渐紧"的整场速查版、**默认起点非硬约束**；四条让位裁决写死（战斗段不走本表→`shared-fight-dispatch`/R31、同景别同角度回"两坑"、对话式先定 i 型五机位、时长交回 `shared-duration-control`）。§十四自检清单加对应核对项。
+- **`shared-frame-image-grammar.md` §四附**：新增「六大现成光型速查」（P3 蒸馏，顶/侧/逆/伦勃朗/硬/体积光 × 英文词 × 脸上效果 × 情绪 × 光源动机常例；"伦勃朗"此前全库零命中）。边界写明：**只是命名/选型菜单**，光的合理化仍回光源地图五项并过 `shared-quality-gate.md` §三第 3 条动机场，一次只选一型、不覆盖已选风格卡/摄影卡。
+- **两项显式拒收（防后续重复评估与被带偏）**：① **全局青橙调色**——与造梦师"色彩由光源材质推导、不做无因全局调色"直接冲突，按后者为准，已作为「不采纳项」写进 §四附；② **V.I.D.E.O. 提示词框架**——与首帧 5 段式 / Seedance STYLE LOCK 重复造第三套分格法。P2 构图七法、P7 十五种角度亦不纳入（已由 §六/§七/§九/§十/§十二 + 运镜层覆盖）。
+- **挂接（同批）**：根 `SKILL.md` §0 两行登记 + 画面语法 §八落点表两条新指针 + 4 个下游消费点（`modules/xiajing-episodes/SKILL.md` 两行、`modules/storyboard-cinematic/SKILL.md` 两行、`modules/xiajing-episodes/references/storyboard-method.md` §挂接行、`references/shared-quality-gate.md` 注册表行）。VERSION 3.4.3-运镜单源 → 3.4.4-Xuan酱速查。
+- **版本号动态化（同批，修漂移）**：§0 版本纪律删写死的"（当前 2.0.0）"（实际早已 3.4.x），改为"`VERSION` 文件是唯一版本源、正文/模块/references/模板/状态文件一律不写死当前版本号"，并补"递增禁止裸用主版本号、特性用带后缀标签、改前 grep 防撞"；§2 `pipeline-state.json` 示例 `skill_version` 由 `"3.1.0"` 改为占位符 `<现读本包根目录 VERSION 文件逐字填入>`，新增写入口径禁止照抄示例/凭记忆填/只写主版本号（写死曾让 §3.1 续集版本比对形同虚设）。
+- **本档同时回填**：CHANGELOG 缺失的 3.2.0 / 3.2.1 / 3.2.2 / 3.3.0 / 3.4.0（画面语法）/ 3.4.0-风格库 / 3.4.1 / 3.4.2-运镜 / 3.4.3-运镜单源 共 9 档（依据见文首回填说明，逐条附包内证据路径）。
+
+## 3.4.3-运镜单源 — 2026-09-08
+
+主题：把运镜判断层**单源化**，根治"英文运镜词多头、dolly/Truck 术语打架"。
+
+- `shared-camera-movement.md` §八 升格为**跨模型英文映射唯一权威**（`dolly ≡ H3 Truck/Push`、Seedance 另拼），听风本地词表退役；H3 §3.3 与 `seedance-stylock.md` 只留本模型执行拼法并以 §八 为映射准绳，不建第二份判断表/自建映射。
+- 纪律固化：判断层不锁英文词（中文概念/选型/辨误/边界）+ 英文集中一处。证据：`references/shared-camera-movement.md` 文件头与 §八、`SKILL.md` §0 运镜行。
+
+## 3.4.2-运镜 — 2026-09-08
+
+主题：**运镜手艺横切单源**（⑭）首次落地——蒸馏自《最核心的 15 种 AI 影视运镜手法》学习笔记。
+
+- 新增 `references/shared-camera-movement.md`：三轴判别法（机位/镜头/焦距谁在动）、15 手法总表、叙事目的→运镜反推表、易混对比、环绕幅度代价提示（非禁令）、兜底写法。
+- **只管非战斗段**：战斗段运镜权威 = seedance-combat **R31**，冲突时本层整段让位；分工裁决"老白管镜头间、本源管单帧内、本层管单镜怎么动"。挂接：听风表+Stage2、虾镜拆镜④、scene-assets 空镜、quality-gate §四、根表、storyboard-method。
+
+## 3.4.1 — 2026-09-08
+
+主题：打戏外协模块**内部编号统一为上位原则 P1–P7 + 执行规则 R1–R32**（seedance-combat-prompt 自身升 v3.0.0）后的跨模块回灌。
+
+- xia-boss 与 storyboard 侧对"32 条铁律"的跨模块引用一律改指 **R1–R32**；`SKILL.md` §0 打戏行加注 P/R 编号口径。
+- 双拷贝（`skills/seedance-combat-prompt` 与 `modules/seedance-combat-prompt`）逐字节同步；证据：`modules/seedance-combat-prompt/SKILL.md` R31 条目与 P1–P7 章节、`SKILL.md` §0 打戏行。
+
+## 3.4.0 — 2026-09-08（画面语法横切）
+
+主题：**画面语法横切单源**（⑬）——《电影感镜头构建原理》（《造梦师》v2.0.0，CC-BY-NC-4.0）全量内联蒸馏。
+
+- 新增 `references/shared-frame-image-grammar.md`：场景母版不变量（`SYNTAX MAY CHANGE. SCENE LOGIC MAY NOT.`）/ 五条成画原理 / 摄像机决策六步 + 焦段表 / 光源地图五项（全介质母法，P1 §6.4 光线防假为其实写线强制裁量、不废）/ 风格卡 16 + 摄影卡 8 决策系统 / 反 AI 味清理（无因不造 + 删词检验，口径同步 `shared-quality-gate.md`）。
+- 分工裁决：**老白管镜头间、本源管单帧内**；导演法经拍板不纳入，视觉参考注入以虾格 infusion 契约为准。
+
+## 3.4.0-风格库 — 2026-09-08（与上一档并行的特性标签）
+
+主题：虾格**风格挂载库**（双层）+ 展示风格图规范 + 导出/应用端点。
+
+- `modules/xiage-styles/styles-library/`（skill 种子层）+ 用户级 `~/.qwenworkcn/xiage-style-library/`（每剧定稿回写）：①风格类型新增"从已验证库选"这条 opt-in 候选路径，**不自动套用**，防趋同改由"用户选择"保证（不再靠"禁止复用"）；库目录单一来源 `style_library_paths.py`。
+- 新增 `modules/xiage-styles/references/style-preview-keyframe.md`（关键场景式展示图规范）；`render-medium-library.md` §四 跨族通则（真人皮肤禁磨皮词，check-assets 反向校验落地）。
+- 项目台：`/api/export-style`（zip + proj_name 脱敏 400）与 `/styles/apply-library`；库不进项目页、走 agent 选择。
+- **编号说明**：本特性与"画面语法横切"同日落地且都占 `3.4.0`，为避免撞号改用带后缀标签，包内 25 处引用一致。
+
+## 3.3.0 — 2026-09-08
+
+主题：**分镜手艺横切单源**（⑫）——《老白的分镜课》17 集全量蒸馏，用户拍板"重叠处以老白为准"。
+
+- 新增 `references/shared-storyboard-craft.md`：两条工作流 + 主镜工作法 / 叙事三原则与强调弱化 / 轴向形状体系（i/l/a/a2）/ 跳轴三类与对联补救 / 景别六点 / 视高六点 / 构图四规则 / 视觉焦点与眼线 / 透视两原则 / 空间感 / 动势 / 视角 / 蒙太奇 + §十四交付自检。
+- 与 `shared-spatial-blocking.md` 分工（本文件管"何时该跳"，那边管"怎么合法越"）；虾镜 `storyboard-method.md` 词表**降为术语库**、决策依据改指本单源。
+- 证据：`references/shared-storyboard-craft.md` 文件头、`modules/xiajing-episodes/references/storyboard-method.md` §挂接行（本档无裸 `3.3.0` 标记，编号按当次会话记录补记）。
+
+## 3.2.2 — 日期未标（回填）
+
+主题：**写实族真人皮肤铁律**（事故固化：主图写 `fair porcelain skin` → 出图磨皮网红脸、丢真实韵味）。
+
+- 写实（族 B）三要素与下游资产提示词正向段必须内建真人皮肤锚（`real photographed / visible pores / subtle uneven skin tone / no beauty retouching / not a plastic idol face / slightly asymmetric bone structure`），禁 `porcelain skin / flawless / airbrushed / glass skin` 等；`check-assets.py` 加反向禁词校验分支。证据：`modules/xiage-styles/SKILL.md` 纪律 11、`modules/xiage-styles/references/render-medium-library.md` §族B、`modules/xiatang-characters/scripts/check-assets.py`。
+
+## 3.2.1 — 日期未标（回填）
+
+主题：**虾镜线打戏落位方案 A**——战斗段在虾镜数据结构里的合法形态定稿。
+
+- 战斗子段 = `shots[]` 特殊镜行（`route:"武戏"`，不带 11 字段/首尾帧/H3）+ `shots.json` 顶层 `battle_segments`；`build-data-js.py` 双副本透传（顶层新增字段必须透传，否则项目台静默丢字段）。
+- 铁则两条：听风段式 ≠ 虾镜平铺 shots，补横切条款前先核模块数据契约；虾镜打戏无脚本门禁，走人工 5 项验收。证据：`modules/xiajing-episodes/SKILL.md` 拆镜检查点 A 与验收段、`references/shared-fight-dispatch.md` §登记落盘、`scripts/build-data-js.py`。
+
+## 3.2.0 — 日期未标（回填）
+
+主题：**渲染介质词组库**（防风格漂底座）+ 虾塘介质锚按风格族分支。
+
+- 新增 `modules/xiage-styles/references/render-medium-library.md`（族A 3D 国漫 CG / 族B 写实 / 族C 二维赛璐璐，各含 STYLE_HEAD + 主图介质锚 + body 强标记 + 负向风格边界）；澄清它**不是成品风格预设**，调性层与 infusion/基调仍每剧现做。
+- 虾塘 `character-assets.md` 三条事故规则：CG 族必带正向主动风格化锚（只靠负面 `FORBIDDEN: photorealism` 压不住写实漂移）、禁写腰以下诱导词（`metal clasp`/腰封等致半身胸像）、**子串陷阱**（`non-photorealistic` 含 `photorealistic` 被 `ID_REALISM_BAN` 误判，改写 `not photographic`）。
+- 证据：`modules/xiage-styles/SKILL.md` 风格库表与纪律 1、`modules/xiatang-characters/references/character-assets.md` §渲染介质分支、`scripts/check-assets.py` 第⑥项 CG 分支。
+
+---
+
 ## 3.1.0 — 2026-09-08
+
 
 主题：**剧本输出格式统一为「虾剧格式」+ 全入口剧本先行 + 场景主键链收口**。经真实解析器（DramaClaw `screenplay_scene_parser` / `screenplay_quality`）实测驱动。
 

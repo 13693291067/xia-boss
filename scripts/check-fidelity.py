@@ -477,7 +477,7 @@ def main():
             mt = motifs_of(e)
             # ★ ⑫ 拓扑图生图提示词校验（2026-09-06b 新增）：规范单源 shared-spatial-blocking §十
             #   三硬规则（blueprint sketch + no photorealism / 站位图标特征 / 文字白名单）+ 回填提醒。
-            #   背景：苍澜关 ep001 三张拓扑图全员违规——规范文档早已存在，但 space_maps 是校验盲区
+            #   背景：实战项目 ep001 三张拓扑图全员违规——规范文档早已存在，但 space_maps 是校验盲区
             #   （文档≠执行的第三次复现），把规范变成闸门。
             smaps = e.get("space_maps") if isinstance(e.get("space_maps"), list) else []
             if smaps:
