@@ -180,32 +180,40 @@ async function openGenModal(cat, name, prompt, ep, promptCn){
       // ★ 2026-08-22 镜头全文本（身份判定信号源）：角色/画面/动作/台词/叙事
       const _fullText = [_chText, _sht.visual, _sht.action, _sht.dialogue, _sht.narrative].filter(Boolean).join(" ");
       const _scName = _sht.scene_name || (_ep.scene_map || {})[_sht.scene_tag] || "";
-      const _sc = (P.xiatang?.scenes||[]).find(s => s.name === _scName);
-      const _refs = [];
-      _chs.slice(0,4).forEach((c,i)=>{
-        // ★ 2026-08-22 身份选择：按镜头实际文本匹配身份（全名→短名→短名子串→兜底第一身份）
+      const _sc = (P.xiatang?.scenes||[]).find(s => s.name && (_scName === s.name || _scName.includes(s.name)));
+      const _shotText = [_sht.visual, _sht.action, _sht.characters, _sht.narrative].filter(Boolean).join(" ");
+      // 资产候选（角色→场景→道具→画面标注）；每个带多张候选图，逐个试加载
+      const _cands = [];
+      _chs.slice(0,4).forEach(c => {
         const _idn = pickIdentityByText(c, _fullText);
-        // ★ 2026-08-22 引用图：身份四视图优先（用户拍板），无四视图降级身份定妆照/角色主图
-        const _img = (_idn && _idn.sheet_ready && _idn.sheet_image) ? _idn.sheet_image
-                   : ((_idn && _idn.image) ? _idn.image : (c.image || null));
-        _refs.push({name: c.name + "=图" + (i+1), img: _img});
+        const imgs = [];
+        if(_idn && _idn.sheet_ready && _idn.sheet_image) imgs.push(_idn.sheet_image);   // 四视图优先
+        if(_idn && _idn.image) imgs.push(_idn.image);                                    // 身份定妆照
+        if(c.image) imgs.push(c.image);                                                  // 角色主图
+        _cands.push({name: c.name, imgs});
       });
-      if(_sc) _refs.push({name: _sc.name + "=图" + (_refs.length+1), img: _sc.image});
-      // ★ 2026-08-22 引用顺序：角色资产 → 场景资产 → 画面标注（有标注图才引用，放最后）
-      if(_sht.annotated_image) _refs.push({name: "画面标注=图" + (_refs.length+1), img: _sht.annotated_image});
-      if(_refs.length){
-        genState.defaultPrompt = _refs.map(r=>r.name).join(" ") + "\n\n" + genState.defaultPrompt;
-        $("gen-prompt").value = genState.defaultPrompt;
-      }
-      _refs.forEach(r => {
-        if(!r.img) return;
-        fetchAsDataUrl(r.img).then(durl => {
-          if(durl){
-            genState.refImages.push({name: r.name, dataUrl: durl, autoRef: true});
-            renderRefPreview();
+      if(_sc) _cands.push({name: _sc.name, imgs: [_sc.image].filter(Boolean)});
+      (P.xiatang?.props||[]).forEach(p => {
+        if(p.name && p.image && _shotText.includes(p.name)) _cands.push({name: p.name, imgs: [p.image]});
+      });
+      if(_sht.annotated_image) _cands.push({name: "画面标注", imgs: [_sht.annotated_image]});
+      // ★ 原则：存在才引用——逐个试加载，取第一个能加载的图；全加载不到=不存在→不引用、不占图号
+      (async () => {
+        const _refs = [];
+        for(const e of _cands){
+          for(const img of e.imgs){
+            const durl = await fetchAsDataUrl(img);
+            if(durl){ _refs.push({name: e.name, dataUrl: durl}); break; }
           }
-        }).catch(() => {});
-      });
+        }
+        if(!_refs.length) return;
+        const _names = _refs.map((r, i) => r.name + "=图" + (i + 1)).join(" ");
+        const _ta = $("gen-prompt");
+        const _cur = String(_ta.value || genState.defaultPrompt || "");
+        if(!_cur.startsWith(_names)){ genState.defaultPrompt = _names + "\n\n" + _cur; _ta.value = genState.defaultPrompt; }
+        genState.refImages = _refs.map((r, i) => ({name: r.name + "=图" + (i + 1), dataUrl: r.dataUrl, autoRef: true}));
+        renderRefPreview();
+      })();
     }
   }
   genRefClear();
