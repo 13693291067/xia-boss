@@ -85,6 +85,18 @@ def scene_type_from_name(name):
         return "indoor"
     return None
 
+def scene_base(scene, scene_names):
+    """'母版 › 分区' → 母版：优先返回资产清单中作为 scene 前缀/子串的母版全名，
+       否则退化为 ' › ' 之前部分。同一母版不同分区视为同一空间（机位移动，非换景）。"""
+    scene = scene or ""
+    for a in (scene_names or []):
+        if a and a in scene:
+            return a
+    return scene.split(" › ")[0].split("›")[0].strip() or scene
+
+def scene_in_assets(scene, scene_names):
+    return any(a and a in (scene or "") for a in (scene_names or []))
+
 def check(path, scene_names, out_path):
     meta, shots = load_shots(path)
     problems = []
@@ -115,8 +127,8 @@ def check(path, scene_names, out_path):
                     problems.append(f"[A矛盾词] 镜{num} scene=`{scene}`(内景) 但画面含外景词「{w}」")
                     break
 
-        # ---- B. 资产缺失 ----
-        if scene_names and scene and scene not in scene_names:
+        # ---- B. 资产缺失（'母版 › 分区' 含母版全名前缀即命中）----
+        if scene_names and scene and not scene_in_assets(scene, scene_names):
             problems.append(f"[B资产缺失] 镜{num} scene=`{scene}` 不在场景资产清单中")
 
     # ---- C. 换景无据（相邻镜 scene 变化但 narrative 无转场词）----
@@ -125,11 +137,13 @@ def check(path, scene_names, out_path):
         b = shots[i]
         sa = str(a.get("scene_name") or a.get("scene_tag") or "")
         sb = str(b.get("scene_name") or b.get("scene_tag") or "")
-        if sa and sb and sa != sb:
+        # 只在「母版」层判换景：同母版不同分区=机位移动，不算换景（守 母版 › 分区 规范）
+        ba, bb = scene_base(sa, scene_names), scene_base(sb, scene_names)
+        if ba and bb and ba != bb:
             narr = str(b.get("narrative") or "") + " " + str(b.get("action") or "") + " " + str(b.get("visual") or "")
             if not any(w in narr for w in TRANSITION_WORDS):
                 num = str(b.get("shot_number") or (i + 1))
-                problems.append(f"[C换景无据] 镜{num} 从 `{sa}` → `{sb}` 但 narrative 无转场词")
+                problems.append(f"[C换景无据] 镜{num} 从 `{sa}` → `{sb}`（跨母版 {ba}→{bb}）但 narrative 无转场词")
 
     # ---- D. 引用行完整性（★ 2026-09-01 新增：shot 带 video_prompt 时校验首行引用行）----
     # 规则：每段视频独立投喂 → 单条提示词必须自包含：
