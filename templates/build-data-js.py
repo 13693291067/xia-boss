@@ -364,6 +364,8 @@ for ed in ep_dirs:
             "narrative": _s.get("narrative", ""),
             # ★ 2026-09-09 剧本秒段出处透传（check-script-fidelity 依赖，缺则项目台静默丢出处）
             "source": _s.get("source", ""),
+            # ★ 2026-09-09 镜级章节透传（前端按 chapter_range 选当前剧情身份，缺则身份选择退化）
+            "chapter": _s.get("chapter", ""),
             # ★ 2026-08-22 分镜大纲字段（Tab1 7 列）：大纲生成器写回，缺省回退完整字段
             "outline_visual": _s.get("outline_visual") or _s.get("visual", ""),
             "outline_dialogue_sound": _s.get("outline_dialogue_sound") or (_s.get("dialogue", "") + ((" · " + _s.get("sound", "")) if _s.get("sound") else "")),

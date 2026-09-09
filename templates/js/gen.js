@@ -185,7 +185,7 @@ async function openGenModal(cat, name, prompt, ep, promptCn){
       // 资产候选（角色→场景→道具→画面标注）；每个带多张候选图，逐个试加载
       const _cands = [];
       _chs.slice(0,4).forEach(c => {
-        const _idn = pickIdentityByText(c, _fullText);
+        const _idn = pickIdentityByChapter(c, _sht.chapter) || pickIdentityByText(c, _fullText);   // ★ 先按当前剧情章节选身份
         const imgs = [];
         if(_idn && _idn.sheet_ready && _idn.sheet_image) imgs.push(_idn.sheet_image);   // 四视图优先
         if(_idn && _idn.image) imgs.push(_idn.image);                                    // 身份定妆照
@@ -540,6 +540,26 @@ async function fetchAsDataUrl(relPath){
     for(let i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
     return "data:image/png;base64," + btoa(bin);
   } catch(e){ return null; }
+}
+// ★ 2026-09-09 按当前剧情章节选身份：命中 chapter_range 区间 → 起点≤当前的最大者 → 否则 null（交调用方回退文本匹配）
+function pickIdentityByChapter(c, chapter){
+  const ids = c.identities || [];
+  if(!ids.length) return null;
+  if(ids.length === 1) return ids[0];
+  const ch = Number(chapter);
+  if(!ch || !isFinite(ch)) return null;
+  const parse = (r) => {
+    const m = String(r || "").match(/ch\s*0*(\d+)(?:\s*[-–—]\s*(?:ch\s*0*)?(\d+)?)?/i);
+    if(!m) return null;
+    return [parseInt(m[1],10), m[2] ? parseInt(m[2],10) : Infinity];
+  };
+  let hit = ids.find(id => { const rg = parse(id.chapter_range); return rg && ch >= rg[0] && ch <= rg[1]; });
+  if(hit) return hit;
+  let best = null, bs = -1, anyStart = false;
+  ids.forEach(id => { const rg = parse(id.chapter_range); if(!rg) return; anyStart = true; if(rg[0] <= ch && rg[0] > bs){ best = id; bs = rg[0]; } });
+  if(best) return best;
+  if(!anyStart) return ids[0];   // 无区间信息 → 最早形态
+  return null;                    // 全部起点 > 当前章（该角色尚未登场）→ 交回退
 }
 // ★ 2026-08-22 按镜头文本选择身份（多身份角色用哪个四视图/定妆照）：全名→短名→短名 2+字子串→兜底有图身份
 // ★ 2026-09-09 修：子串命中必须排除"其实是角色名自身的一部分"（如身份"晚晚楼主"含于角色"苏晚晚"→误选未生成的未来身份）；兜底优先有图身份
