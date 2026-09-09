@@ -9,6 +9,25 @@
 > 2. **日期**：有 ★ 日期者照记；3.2.0 / 3.2.1 / 3.2.2 包内只有版本号无日期，标「日期未标」不猜。
 > 3. **编号约定报备**：`3.4.0` 当次出现**两个并行标签**——裸 `3.4.0`（画面语法横切）与 `v3.4.0-风格库`（虾格风格挂载库，包内 25 处引用）。这是并发会话撞号后按"带后缀不裸用版本号"约定的处置，**保留现状不重编号**：重编号会断掉 25 处已落地的带后缀引用。
 
+## 3.5.6-STYLELOCK消重 — 2026-09-09
+
+主题：消除 Seedance STYLE LOCK 的双份正本债（#31）+ 补 ⑤ 符号自检跑出的门禁。
+- **⑤ 符号自检产物**：冒烟实测发现"把 `{}` 误写进分镜 `dialogue`（顶掉「」）会让 `check-script-fidelity` C2 静默失效"→ 给 `scripts/check-script-fidelity.py` **新增 D 符号越界检测**（dialogue 含 `{}` 且无「」→ FAIL，四查），并在 stylock §1.5 补"硬约束"。夹具三案例实测 PASS/FAIL(C1C2)/FAIL(D)，投毒对照证明门禁不空转。
+- **#31 消重**：`storyboard-method.md` §九.12 原与 `seedance-stylock.md` 逐段重复（每次改 ②③⑤ 要同步两遍）→ 用断言脚本（命中唯一才落盘）**删 3122 字符 → 塌缩为指向 stylock 的单源指针**；§九.1–11（分镜字段格式）保留不动。同步修两处会悬空的引用：§9.0 公式 A "即 §九.12 本体"→"正本 = stylock"；stylock §1.5 符号"与 storyboard §九.12 同步"→"本条为唯一正本"。
+- **验证**：`grep` 确认 stylock 为 STYLE LOCK/关键约束唯一规范正本（`example-shotlist-36.md` 里的"关键约束"是示例产物、非规范副本，属锚定示例豁免）；无残留指向已删 §九.12 正文的引用。
+- **影响面**：虾镜纪律 2/§9.0 加载 Seedance 模板时以 stylock 为准；无项目数据。证据：`scripts/check-script-fidelity.py`、`modules/xiajing-episodes/references/storyboard-method.md` §九.12/§9.0、`seedance-stylock.md` §1.5。
+
+## 3.5.5-公式门与符号约定 — 2026-09-09
+
+主题：依《Doubao Seedance 2.0 系列提示词指南》逐条对照后落地 4 项（用户"先做①②③⑤"）。
+- **① 公式选择门（新增强制纪律）**：`storyboard-method.md` 新增 §9.0，定义 Seedance video_prompt 两套组织法——公式 A（虾集现行分层导演式，默认）/ 公式 B（官方八要素平铺式）；`xiajing-episodes/SKILL.md` 新增纪律 18：模型=Seedance 时每集写 video_prompt 前**必须 AskUserQuestion 问 A/B、得到答复才继续、禁止静默默认**，推荐 A；纪律 2 Seedance 分支加指针。模型=H3 不触发。
+- **② 删硬秒拍（修未跟上的旧文件，非新增知识）**：Seedance「一镜到底」的 `0–2s / 2–5s` 硬 beat → 语义节拍，指回 `shared-performance-realism.md` §6 单源（不写死精确秒、总时长开头提一次、精确时码仅留分镜表）；多分镜"约X秒/持续时长"标为软参考。**stylock §3 与 storyboard-method §九.12 两份同步改**。
+- **③ 素材上限 + 锚定强化**：Stylock §2 / storyboard §九.12「参考图锚定」改为人物合计 1–4 张（四视图卡算一张·一人一图不动）+ 每条写 2–3 稳定静态特征复述 + 场景 1 + 可选音频 1 + 保留色卡；运镜/风格/画质走文字不占素材位；重要素材前置；按需用少不用堆（**采纳用户"去掉运镜视频、人物放宽到1-4"的修改**）。
+- **⑤ 信息类型符号约定**：`seedance-stylock.md` §1 新增第 5 条 + `storyboard-method.md` §九.12 写作规则新增第⑤条——Seedance 投喂正文用 音乐`（）`/音效`<>`/台词`{}`（小语种标语种）/字幕`【】`，**符号只在组装最终 video_prompt 时加、分镜表裸文本不受影响**；H3 不套用。**自检冒烟发现**：把 `{}` 误写进分镜 `dialogue`（顶掉「」）会静默致盲 `check-script-fidelity` 的 C2「防自创台词」→ 已在 ⑤ 两份加"硬约束"注 + 给 `check-script-fidelity.py` 新增 **D 符号越界检测**（dialogue 含 `{}` 且无「」即 FAIL）。夹具三案例实测：正例 PASS(exit0) / 改写台词 FAIL(C1+C2) / `{}` 误入 dialogue FAIL(D)，投毒对照证明门禁不空转。
+- **撤回项（用户否决，未落地）**：弃四视图/无表情大头照（继续用四视图卡）、纪律 1b 群像自动垫图裁剪、`gvAutoRefs` model-gating 核查——均不改。
+- **影响面/待办**：两份 STYLE LOCK 现仍双份（stylock vs storyboard §九.12），本轮已同步改、**消重列另轮**（唯一真欠项）。⑤ 符号已实测闭环（正例 PASS、D 检测兜住误用），无需再专门跑回归。
+- 证据：`modules/xiajing-episodes/references/storyboard-method.md` §9.0/§九.12、`modules/xiajing-episodes/references/seedance-stylock.md` §1/§2/§3、`modules/xiajing-episodes/SKILL.md` 纪律 2/纪律 18。
+
 ## 3.5.4-身份按剧情章节匹配 — 2026-09-09
 
 主题：落实用户原则「**角色资产的引用要匹配当前剧情的身份**」——身份选择从"镜头文本模糊子串"升级为"按当前章节命中 chapter_range"。

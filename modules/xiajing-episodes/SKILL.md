@@ -145,7 +145,7 @@ agent_created: true
 1. **首帧/尾帧提示词 = 顶部资产引用行 + 5 段式（★ 独立文件调度）**：`firstframe_prompt`/`tailframe_prompt` = 顶部资产引用行（角色A=图1，示例大殿=图2）+ 5 段式正文（①风格与质感 ②镜头 ③色彩 ④画面内容 ⑤限制）。**完整规范见 `references/prompt-5section.md`，生成首帧/尾帧提示词时加载**（英文纯净；首帧=动作开始前状态，尾帧=动作终点/反应状态；不重复人物外貌设定，只写姓名）。
 1b. **★ 生图自动注入资产引用（2026-08-22 用户拍板；2026-09-09 强化两条铁律，制作页首帧/尾帧生成自动执行）**：打开生成弹窗时自动——①提示词开头插入「角色名=图1 场景名=图2 …」+换行；②自动垫角色/场景/道具资产图（图号=参考图顺序，角色→场景→道具→画面标注）。**两条铁律**：**(a) 存在才引用**——每个资产带多张候选图（四视图→身份图→主图）逐个试加载，只有能加载到图的资产才编号 `=图N` 并垫图，一张都加载不到=不存在→**不引用、不占号**（杜绝"引用了却没图"和给未生成资产占位）。**(b) 角色身份要匹配当前剧情**——优先按镜级 `chapter` 命中身份 `chapter_range`（`pickIdentityByChapter`：命中区间→取之，否则取起点≤当前的最大形态），镜头文本匹配（`pickIdentityByText`：全名→短名→2+字子串且排除角色名自身子串→兜底有图身份）仅作无章节信息时的回退；无四视图降级定妆照/主图。场景取 scene_name（scene_map 解析，母版子串匹配兼容"母版 › 分区"）；道具按镜头文本命中且有图才引用；**取数必须编辑稿优先**（`edited_shots || shots`，与页面显示一致，防编辑稿改过的出场人物漏引）。
 2. **video_prompt = 按「生视频模型」设置路由（★ 双模型调度，独立文件调度）**：每个镜头独立输出一段可复制的生视频提示词。**页面「生视频模型」设置决定用哪个模板**：
-   - **= Seedance 2.0**：用 STYLE LOCK 导演模板 = 顶部资产引用行 + 【STYLE LOCK 风格锁】+【分镜画面 Shots】+【声音设计】+【关键约束】。完整模板见 `references/seedance-stylock.md`（中英术语并写/HEX 色值/一人一图锚定/硬切 only/不越轴/跨镜连续/real-time speed）。
+   - **= Seedance 2.0**：用 STYLE LOCK 导演模板 = 顶部资产引用行 + 【STYLE LOCK 风格锁】+【分镜画面 Shots】+【声音设计】+【关键约束】。完整模板见 `references/seedance-stylock.md`（中英术语并写/HEX 色值/一人一图锚定/硬切 only/不越轴/跨镜连续/real-time speed）。**⚠ 撰写前先过纪律 18 公式选择门**（公式 A 分层式 / 公式 B 官方八要素式，定义见 `references/storyboard-method.md` §9.0）。
    - **= MiniMax-H3**：用官方全参考模式六段式 = `subject_definitions` + `summary` + `retention_analysis` + `detailed_description` + `overall_soundscape` + `non_diegetic_music`；角色经 `<Subject N>` 标签引用四视图资产，正文只写动作/运镜/对白/音效（角色形象由参考图锁定，提示词不重复服装描写）。完整规范见 `references/h3-video-prompt-ref.md`（多图参考）/ `references/h3-video-prompt-base.md`（首尾帧/文生视频）。
    - **前端 `buildStoryVideoPrompt` 实现**：读取 `genState.videoModel`（默认 `seedance`），`seedance` 走 `buildStoryVideoPromptSeedance`，`h3` 走 `buildStoryVideoPromptH3`。
 3. **首尾帧配套**：图生视频镜头必须有 firstframe_prompt；tailframe_prompt 按 5 段式写动作终点/反应状态；尾帧状态并入 video_prompt 动作终点/反应段。
@@ -192,6 +192,8 @@ agent_created: true
     - **整段抽出铁律（虾镜落位 = 特殊镜行）**：战斗段**不做拆镜七步法 ⑤~⑦ 逐镜设计**——每个战斗子段（≤15s）在 shots[] 中落位为**一个特殊镜行**：`route:"武戏"` 标记 + `visual` 写「战斗段：<子段概要>，外协提示词见本镜视频提示词」+ 正常镜号与时长（=子段时长）；**无 11 字段逐镜拆分、无首帧/尾帧提示词、无 H3 双产**；相邻文戏镜不得夹带打斗动作描述；战斗段直接后继镜（余韵/收束）仍按文戏流程走（简化门禁：状态连续 + 环境因果锚定 + 接触与结果不可省略）；
     - **调度与回流（检查点 A 确认后执行）**：按单源协议组装八字段【打戏调度单】（segment_id / 群战人数结构 / 角色A·B ← 虾塘角色卡「战斗语言」/ 场景 ← 虾塘 scene-assets / 视觉风格 ← 虾格 creation-direction.json 原样搬运禁改写 / 战斗节奏 / 结局 / 特殊要求）→ 用户确认调度单 → Read `../seedance-combat-prompt/SKILL.md` 按其工作流生成 15s 提示词 → 用户确认产出 → **整段回流**：回填对应特殊镜行的 `video_prompt` = seedance 提示词全文（自足，无引用行/STYLE/执行约束外壳）、**负面四禁**（武器形态漂移/动作接触失真/力量反馈缺失/慢动作滥用）并入该镜负面提示词行；>15s 战斗段拆多张单（一个子段 = 一个特殊镜行），后单「段间衔接」声明前单末状态；
     - **虾镜线验收（暂无机械门禁，人工逐项核对，结果写入交付简报）**：① `ep.battle_segments` 已登记且镜号区间与特殊镜行对得上；② 战斗子段均为特殊镜行（route=武戏、无逐镜 11 字段/无首尾帧提示词）且相邻文戏镜未夹带打斗动作；③ 负面四禁在该镜负面提示词行内；④ 高危词已过 `../../references/shared-compliance-lexicon.md` 转译；⑤ >15s 多单各占一镜且段间衔接状态连续。
+
+18. **视频提示词公式选择门（★ 强制，2026-09-09 用户拍板，仅 Seedance）**：本集「生视频模型」= Seedance 时，**进入分镜画面 / video_prompt 撰写前，必须 AskUserQuestion 问用户用公式 A（虾集分层式）还是公式 B（官方八要素式），得到答复才继续，禁止默认静默跑**。推荐项＝**公式 A**，排第一并标 (Recommended)；公式正文与映射单源见 `references/storyboard-method.md` §9.0，本条不复制。**每集问一次**，允许用户口头对单镜改选；**模型 = H3 不触发本门**（走 H3 六段式）。无论选 A/B，负面四禁、英文纯净、顶部资产引用行、语义节拍（不写死秒）一律照旧生效。
 
 ## 7. 与其它 skill 的关系
 

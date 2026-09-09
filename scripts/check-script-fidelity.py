@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 """虾镜·剧本保真机械门禁（check-script-fidelity）
 来源：2026-09-09 事故固化——虾镜 shots 凭记忆/大纲拆镜导致"自创拍、台词改写、漏拍"，
-文档级逐句清单形同虚设。本门禁把「按剧本来」变成机械可查的三查（缺一即 FAIL）：
+本门禁把「按剧本来」变成机械可查的四查（缺一即 FAIL）：
   A 秒段覆盖   ：剧本 ep{NNN}.md 的每个秒段（循环N·X—Y秒）至少被 1 个镜头的 source 引用；
   B 出处合法   ：每镜 source 必须精确指向剧本中真实存在的秒段（禁自造出处）；
   C 台词逐字   ：C1 剧本每条台词必须逐字出现在某镜 dialogue；C2 每镜 dialogue 中的每句
                 台词必须逐字来自剧本（双向夹击，抓"改写台词"与"自创台词"）。
+  D 符号越界   ：dialogue 含 {} 台词标记却无「」引号 → C2 会静默致盲，报错（{} 只属 video_prompt）。
 用法：
   python scripts/check-script-fidelity.py <项目根> --ep N
   python scripts/check-script-fidelity.py <项目根> --script <md路径> --shots <json路径>   # 便于投毒对照
@@ -109,6 +110,12 @@ def main():
                 # 容错：合并镜可能把两条剧本引文拼进同一句——按“任一剧本引文是它的子串”判定
                 if not any(qq in q for qq in script_quotes if len(qq) >= 2):
                     problems.append("[C2台词自创/改写] 镜%s 台词「%s…」不是剧本原文（凭记忆改写）" % (num, q[:24]))
+
+    # ---- D. 符号越界：{} 误入分镜 dialogue 且无「」→ C2 静默致盲 ----
+    for s in shots:
+        dia = str(s.get("dialogue") or "")
+        if re.search(r"\{[^{}]{2,}\}", dia) and not shot_quotes(dia):
+            problems.append("[D符号越界] 镜%s dialogue 含 {} 台词标记却无「」引号——本门禁只从「」/引号提台词，此镜 C2「防自创台词」已静默失效。分镜台词须用「」、{} 只进 video_prompt" % (s.get("shot_number") or "?"))
 
     print("剧本秒段: %d | 剧本台词引文: %d | 镜头: %d" % (len(segs), len(script_quotes), len(shots)))
     if problems:
