@@ -266,6 +266,9 @@ for ed in ep_dirs:
             _ch_map = (_sd.get("ch_map", {}) if isinstance(_sd, dict) else {}) or {}
             # ★ 2026-09-08 战斗段登记透传（虾镜纪律 17·方案 A）：shots.json 顶层 battle_segments → 项目台可见
             _battle_segments = (_sd.get("battle_segments", []) if isinstance(_sd, dict) else []) or []
+            # ★ 2026-09-09 同源段稿透传：build_prompts 产的每板 ≤15s 段生视频提示词 + 分段配置（离线为唯一源）
+            _sbvps = (_sd.get("storyboard_video_prompts", []) if isinstance(_sd, dict) else []) or []
+            _sbcfg = (_sd.get("storyboard_config", {}) if isinstance(_sd, dict) else {}) or {}
             # ★ 2026-08-22 镜号归一化：统一 zfill(2)（消除 "1"/"01" 混用，避免拖动 reorder 匹配失败）
             def _zn(n):
                 s = str(n or "").strip()
@@ -302,11 +305,13 @@ for ed in ep_dirs:
             _ep_shots, _title, _tone, _status, _sb_img, _sb_rd, _edited_shots = [], f"第{ep_num}集", {}, {}, "", False, None
             _scene_map, _ch_map = {}, {}
             _battle_segments = []
+            _sbvps, _sbcfg = [], {}
     else:
         _beats_path = os.path.join(BASE, "outputs/xiajing", ed, "beats.json")
         _title, _tone, _status, _sb_img, _sb_rd, _edited_shots = f"第{ep_num}集", {}, {}, "", False, None
         _scene_map, _ch_map = {}, {}
         _battle_segments = []
+        _sbvps, _sbcfg = [], {}
         if os.path.exists(_beats_path):
             try:
                 _beats = json.load(open(_beats_path, encoding="utf-8"))
@@ -364,6 +369,8 @@ for ed in ep_dirs:
             "narrative": _s.get("narrative", ""),
             # ★ 2026-09-09 剧本秒段出处透传（check-script-fidelity 依赖，缺则项目台静默丢出处）
             "source": _s.get("source", ""),
+            # ★ 2026-09-09 镜级章节透传（前端按 chapter_range 选当前剧情身份，缺则身份选择退化）
+            "chapter": _s.get("chapter", ""),
             # ★ 2026-08-22 分镜大纲字段（Tab1 7 列）：大纲生成器写回，缺省回退完整字段
             "outline_visual": _s.get("outline_visual") or _s.get("visual", ""),
             "outline_dialogue_sound": _s.get("outline_dialogue_sound") or (_s.get("dialogue", "") + ((" · " + _s.get("sound", "")) if _s.get("sound") else "")),
@@ -375,7 +382,9 @@ for ed in ep_dirs:
             "video_prompt": _s.get("video_prompt", ""),
             "video": _s.get("video", f"assets/ep{ep_num:03d}/video/shot{_nn}.mp4"),
             "is_edited": bool(_s.get("is_edited", False)),
-            "original_shot": _s.get("original_shot")
+            "original_shot": _s.get("original_shot"),
+            # ★ 2026-09-09 同源双模型逐镜稿透传（离线产 {seedance,h3}，缺 h3 留空）
+            "video_prompts": _s.get("video_prompts") or ({"seedance": _s.get("video_prompt",""), "h3": ""} if _s.get("video_prompt") else None),
         })
     # ★ 2026-08-22 故事板多张（9 镜/张自动分组）：反推 assets/ep{NNN}/storyboards/story-{集}-{idx}.png
     #   （命名与 name=story-{集}-{idx} 一致，如 story-1-1.png）
@@ -391,6 +400,19 @@ for ed in ep_dirs:
                     "ready": True,
                     "history": asset_history(f"ep{ep_num:03d}/storyboards", _sf),
                 })
+    # ★ 2026-09-09 离线同源段稿权威合并：按板号写入 _storyboards[].video_prompts（无图的板建桩），
+    #   使前端故事板直接读离线稿、不再自行拼装；此步在"merge 旧快照"之后执行 → 离线覆盖旧前端稿。
+    _sb_by_idx = {sb.get("idx"): sb for sb in _storyboards}
+    for _b in _sbvps:
+        _bi = _b.get("idx")
+        if _bi is None: continue
+        _sb = _sb_by_idx.get(_bi)
+        if _sb is None:
+            _sb = {"idx": _bi, "ready": False}
+            _storyboards.append(_sb); _sb_by_idx[_bi] = _sb
+        _sb["video_prompts"] = _b.get("video_prompts", {"seedance": [], "h3": []})
+        _sb["seg_ranges"] = _b.get("seg_ranges", [])
+    _storyboards.sort(key=lambda s: s.get("idx") or 0)
     all_episodes.append({
         "number": ep_num,
         "title": _title,
@@ -399,6 +421,8 @@ for ed in ep_dirs:
         "storyboard_image": _sb_img,
         "storyboard_ready": _sb_rd,
         "storyboards": _storyboards,
+        "storyboard_config": _sbcfg,
+        "storyboard_video_prompts": _sbvps,
         "scene_map": _scene_map,
         "ch_map": _ch_map,
         "battle_segments": _battle_segments,
@@ -424,9 +448,9 @@ if sqlite3 is not None:
                 for _sb in _ep.get("storyboards", []):
                     _osb = _old_sbs.get(_sb.get("idx"))
                     if _osb:
-                        if _osb.get("video_prompts") is not None:
+                        if _osb.get("video_prompts") is not None and _sb.get("video_prompts") is None:
                             _sb["video_prompts"] = _osb["video_prompts"]
-                        if _osb.get("video_segments") is not None:
+                        if _osb.get("video_segments") is not None and _sb.get("video_segments") is None:
                             _sb["video_segments"] = _osb["video_segments"]
                 # ★ 2026-08-31 空间拓扑图（按集单张，db 有、build 文件反推无）：merge 回来
                 if _oe.get("space_map_image"):
