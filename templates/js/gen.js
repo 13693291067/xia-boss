@@ -541,27 +541,32 @@ async function fetchAsDataUrl(relPath){
     return "data:image/png;base64," + btoa(bin);
   } catch(e){ return null; }
 }
-// ★ 2026-08-22 按镜头文本选择身份（多身份角色用哪个四视图/定妆照）：全名→短名→短名 2+字子串→兜底第一身份
+// ★ 2026-08-22 按镜头文本选择身份（多身份角色用哪个四视图/定妆照）：全名→短名→短名 2+字子串→兜底有图身份
+// ★ 2026-09-09 修：子串命中必须排除"其实是角色名自身的一部分"（如身份"晚晚楼主"含于角色"苏晚晚"→误选未生成的未来身份）；兜底优先有图身份
 function pickIdentityByText(c, text){
   const ids = c.identities || [];
   if(!ids.length) return null;
   const t = String(text || "");
-  const shortOf = (name) => String(name).replace(new RegExp("^" + c.name + "\\s*"), "").replace(/身份$|造型$|装$/, "").trim();
-  let hit = ids.find(id => t.includes(id.name));          // ① 全名
+  const cn = String(c.name || "");
+  const shortOf = (name) => String(name).replace(new RegExp("^" + cn + "\\s*"), "").replace(/身份$|造型$|装$/, "").trim();
+  const notSelf = (frag) => !!frag && !cn.includes(frag);   // 排除"片段是角色名自身子串"的伪命中
+  let hit = ids.find(id => id.name && t.includes(id.name) && notSelf(id.name));   // ① 全名
   if(hit) return hit;
   let best = null, bestLen = 0;
   ids.forEach(id => {
     const s = shortOf(id.name);
-    if(!s) return;
+    if(!s || !notSelf(s)) return;
     if(t.includes(s)){ if(s.length > bestLen){ best = id; bestLen = s.length; } return; }
     for(let i=0;i<s.length-1;i++){                        // ② 短名 2+ 字连续子串
       for(let j=i+2;j<=s.length;j++){
         const sub = s.slice(i,j);
-        if(sub.length >= 2 && t.includes(sub) && sub.length > bestLen){ best = id; bestLen = sub.length; }
+        if(sub.length >= 2 && notSelf(sub) && t.includes(sub) && sub.length > bestLen){ best = id; bestLen = sub.length; }
       }
     }
   });
-  return best || ids[0];                                  // ③ 兜底第一身份
+  if(best) return best;
+  // ③ 兜底：优先第一个"有图"的身份（四视图就绪 或 有定妆照路径），否则 ids[0]
+  return ids.find(id => (id.sheet_ready && id.sheet_image) || id.image) || ids[0];
 }
 async function genSend(){
   let prompt = ($("gen-prompt").value||"").trim();
