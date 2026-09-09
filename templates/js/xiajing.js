@@ -245,8 +245,23 @@ function storyboardRowHTML(ep, g, gno){
   //   否则每次渲染都会把 DB 里已落库的 mp4 路径覆盖掉 → 视频位永远显示占位。
   // ★ 旧数据迁移：sb.video_prompts 曾是数组（仅 seedance），首次装填时识别为旧格式 → 用新双模型结构覆盖。
   const isOldArr = Array.isArray(sb.video_prompts);
-  const hasBoth = sb.video_prompts && !isOldArr && (sb.video_prompts.seedance && sb.video_prompts.seedance.length) && (sb.video_prompts.h3 && sb.video_prompts.h3.length);
-  if(isOldArr || !hasBoth){
+  let segWarn = "";
+  const offlineSeed = sb.video_prompts && !isOldArr && sb.video_prompts.seedance && sb.video_prompts.seedance.length;
+  if(offlineSeed){
+    // ★ 离线同源段稿为准（build_prompts 产、build-data-js 注入）：视频段用离线 seg_ranges，不前端重算
+    const old = sb.video_segments || [];
+    sb.video_segments = (sb.seg_ranges || []).map((r, i) => ({
+      first: r.first, last: r.last, total: r.total,
+      video: old[i] && old[i].video, video_ready: old[i] && old[i].video_ready, video_result: old[i] && old[i].video_result,
+    }));
+    if(!Array.isArray(sb.video_prompts.h3)) sb.video_prompts.h3 = [];   // seedance-only：h3 留空
+    // ★ 段边界一致性自检：离线 seg_ranges vs 当前镜独立切段，不一致=改过镜/时长变，提示重跑
+    const feSegs = splitStory15s(shots, g.idxs);
+    const off = sb.seg_ranges || [];
+    if(feSegs.length !== off.length || feSegs.some((s, i) => !off[i] || String(off[i].first) !== String(s.first) || String(off[i].last) !== String(s.last))){
+      segWarn = `<div style="flex-basis:100%;font-size:12px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:6px 10px">⚠ 板${gno} 离线段稿与当前镜时长不一致（改过镜/时长变了？）——请重跑 build_prompts + build-data-js 刷新段稿。</div>`;
+    }
+  } else {
     const segs = splitStory15s(shots, g.idxs);
     if(segs.length){
       const old = sb.video_segments || [];
@@ -255,27 +270,18 @@ function storyboardRowHTML(ep, g, gno){
         video: old[i]?.video, video_ready: old[i]?.video_ready,
         video_result: old[i]?.video_result,
       }));
-      // 旧数组：内容模型不可考（可能是任一种），为保真一律丢弃、两边用各自 builder 重新生成
-      // （一次性迁移，下次即双模型齐全且各自正确）
-      if(isOldArr){
-        sb.video_prompts = {
-          seedance: segs.map(s => buildStoryVideoPromptSeedance(shots, s)),
-          h3: segs.map(s => buildStoryVideoPromptH3(shots, s)),
-        };
-      } else {
-        // 新结构但某边缺失：补齐两边（已存在的边保留，避免覆盖用户手动编辑）
-        const cur = xjVPArr(sb.video_prompts);
-        sb.video_prompts = {
-          seedance: (cur.seedance && cur.seedance.length) ? cur.seedance : segs.map(s => buildStoryVideoPromptSeedance(shots, s)),
-          h3: (cur.h3 && cur.h3.length) ? cur.h3 : segs.map(s => buildStoryVideoPromptH3(shots, s)),
-        };
-      }
+      // 无离线段稿（旧数组格式 / 该板未离线处理）→ 前端兜底重算两套
+      sb.video_prompts = {
+        seedance: segs.map(s => buildStoryVideoPromptSeedance(shots, s)),
+        h3: segs.map(s => buildStoryVideoPromptH3(shots, s)),
+      };
     }
   }
   const segs = sb.video_segments || [];
   // ★ 显示按当前模型取对应分支
   const prompts = xjVPPrompt(ep, sb, (typeof genVideoModel !== "undefined" && genVideoModel === "h3") ? "h3" : "seedance");
   return `
+  ${segWarn}
   <div style="display:flex;gap:14px;flex-shrink:0;align-items:stretch;min-width:max-content">
     <!-- 故事板块 -->
     <div style="width:260px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;display:flex;flex-direction:column">
@@ -1023,13 +1029,14 @@ function gvOpenRefPicker(){
 }
 // ★ 2026-08-23 按 ≤15s 切段（分镜脚本秒数累计，超 15 封段开新段）
 function splitStory15s(shots, idxs){
+  const SM = ((typeof P!=="undefined" && P.xiajing && P.xiajing.storyboard_config) || {}).seg_max_s || 15;
   const segs = []; let cur = [], curT = 0;
   idxs.forEach(i => {
     const s = shots[i]; if(!s) return;
     const d = parseFloat(String(s.duration || "").replace(/[^\d.]/g, "")) || 3;
-    if(cur.length && curT + d > 15){ segs.push(cur); cur = []; curT = 0; }
+    if(cur.length && curT + d > SM){ segs.push(cur); cur = []; curT = 0; }
     cur.push(s); curT += d;
-    if(cur.length && curT >= 15){ segs.push(cur); cur = []; curT = 0; }
+    if(cur.length && curT >= SM){ segs.push(cur); cur = []; curT = 0; }
   });
   if(cur.length) segs.push(cur);
   return segs.map(seg => ({

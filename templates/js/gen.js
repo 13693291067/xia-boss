@@ -1709,20 +1709,22 @@ function batchGenStoryboard(){ return batchGenImages("storyboard"); }
 // ★ 2026-08-22 故事板拼板：返回容量序列（9/6 格板）——板数最少 + 总格数最少，末板不足也生成（留白）
 //   37→[9,9,9,6,6]（第5板 4beat+2白）；38→[9,9,9,6,6]；39→[9,9,9,6,6]满；40→[9,9,9,9,6]；43→[9,9,9,9,9]；61→[9×7]
 function storyBoardSplit(total){
+  const _cfg = (typeof P!=="undefined" && P.xiajing && P.xiajing.storyboard_config) || {};
+  const bmax = _cfg.board_max || 9, bmin = _cfg.board_min || 6;
   let best = null;
-  for(let b=0; b<=Math.floor(total/6); b++){
-    const rem = total - 6*b;
-    const a = Math.max(0, Math.ceil(rem/9));
-    const tot = 9*a + 6*b;
+  for(let b=0; b<=Math.floor(total/bmin); b++){
+    const rem = total - bmin*b;
+    const a = Math.max(0, Math.ceil(rem/bmax));
+    const tot = bmax*a + bmin*b;
     if(tot < total) continue;
     const boards = [];
-    for(let i=0;i<a;i++) boards.push(9);
-    for(let i=0;i<b;i++) boards.push(6);
+    for(let i=0;i<a;i++) boards.push(bmax);
+    for(let i=0;i<b;i++) boards.push(bmin);
     if(!best || boards.length < best.boards.length || (boards.length===best.boards.length && tot < best.tot)){
       best = {boards, tot};
     }
   }
-  return best ? best.boards : [9];
+  return best ? best.boards : [bmax];
 }
 
 async function batchGenImages(cat){

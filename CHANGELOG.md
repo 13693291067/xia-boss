@@ -9,6 +9,14 @@
 > 2. **日期**：有 ★ 日期者照记；3.2.0 / 3.2.1 / 3.2.2 包内只有版本号无日期，标「日期未标」不猜。
 > 3. **编号约定报备**：`3.4.0` 当次出现**两个并行标签**——裸 `3.4.0`（画面语法横切）与 `v3.4.0-风格库`（虾格风格挂载库，包内 25 处引用）。这是并发会话撞号后按"带后缀不裸用版本号"约定的处置，**保留现状不重编号**：重编号会断掉 25 处已落地的带后缀引用。
 
+## 3.5.7-制作故事板同源 — 2026-09-09
+
+主题：让**制作页（单镜）与故事板（多镜）的生视频提示词同源**——同一 STYLE LOCK 模板，唯一差别是镜数与 Shots 模式（用户纠偏：不该是两套不同质量的生成器）。
+- **背景**：制作 video_prompt 是离线定稿（精细 STYLE LOCK），故事板是前端 `buildStoryVideoPrompt*` 实时粗拼（引用行+每镜一行摘要）→ 不同源、详略不一致。
+- **改法（离线为唯一源，seedance-only）**：① 新增共享配置 `outputs/xiajing/storyboard-config.json`（board_max/board_min/seg_max_s），前端 `storyBoardSplit`/`splitStory15s` 与离线 `build_prompts` 都读它（经 build-data-js 注入快照）；② 离线 `build_prompts` 用同一 `build_video_prompt(shots[], mode)` 既产单镜稿（写 `shot.video_prompt`+`video_prompts{seedance,h3}`）又产每板 ≤15s 段稿（写 shots.json 顶层 `storyboard_video_prompts`）；③ `build-data-js` 透传 config + 段稿，按板号权威合并进 `ep.storyboards[].video_prompts`（旧快照 merge 仅在离线缺时兜底）；④ 前端故事板改为**离线段稿为准**（有 seedance 直接读、按 seg_ranges 建视频段，不再实时重算），并加**段边界一致性自检**（离线 seg_ranges vs 当前镜独立切段不符则提示重跑）。
+- **对齐 3.5.6 STYLE LOCK 规范**：段稿/单镜稿统一——台词 `{}`、音效 `<>`、BGM `（）`（shots.json dialogue 仍「」，保真门禁不受影响）；一镜到底用"开场→随后→结尾"语义节拍、时长标"软参考·不承诺逐秒"；人物锚定行复述 2–3 稳定静态特征。
+- **影响面**：三份脚本双副本同步（templates/build-data-js.py、templates/js/gen.js、templates/js/xiajing.js）。证据：ep001 全片 51 镜单镜稿 + 6 板 21 段段稿，caps=[9,9,9,9,9,6] 双端一致；保真门禁 PASS、场景一致性 A/B/C/D=0。
+
 ## 3.5.6-STYLELOCK消重 — 2026-09-09
 
 主题：消除 Seedance STYLE LOCK 的双份正本债（#31）+ 补 ⑤ 符号自检跑出的门禁。
