@@ -160,10 +160,11 @@ def check(path, scene_names, out_path):
             first_line = vp.split("\n")[0]
             import re as _re
             ref_names = _re.findall(r"([^=\s]+)=图\d+", first_line)
-            if "空间拓扑图" not in ref_names:
+            _topo_idx = [i for i, n in enumerate(ref_names) if n.startswith("空间拓扑图")]
+            if not _topo_idx:
                 problems.append(f"[D引用行] 镜{num} 提示词首行缺「空间拓扑图」引用（空间锚缺失）")
-            elif ref_names[-1] != "空间拓扑图":
-                problems.append(f"[D引用行] 镜{num} 引用顺序错误：空间拓扑图应在最后（角色→场景→道具→拓扑图），当前在第 {ref_names.index('空间拓扑图')+1} 位")
+            elif ref_names[-1] != ref_names[_topo_idx[-1]] or not ref_names[-1].startswith("空间拓扑图"):
+                problems.append(f"[D引用行] 镜{num} 引用顺序错误：空间拓扑图（含场名 空间拓扑图·场N）应在最后（角色→场景→道具→拓扑图），当前末位={ref_names[-1] if ref_names else '空'}")
             if scene and scene not in first_line:
                 problems.append(f"[D引用行] 镜{num} 提示词首行缺本段场景图引用「{scene}」（单条提示词必须自包含场景锚）")
 

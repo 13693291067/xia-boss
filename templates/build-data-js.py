@@ -269,6 +269,8 @@ for ed in ep_dirs:
             # ★ 2026-09-09 同源段稿透传：build_prompts 产的每板 ≤15s 段生视频提示词 + 分段配置（离线为唯一源）
             _sbvps = (_sd.get("storyboard_video_prompts", []) if isinstance(_sd, dict) else []) or []
             _sbcfg = (_sd.get("storyboard_config", {}) if isinstance(_sd, dict) else {}) or {}
+            # ★ 2026-09-09 空间拓扑图透传：build_prompts 从 space_maps.json 写入 ep 级 space_maps
+            _spmaps = (_sd.get("space_maps", []) if isinstance(_sd, dict) else []) or []
             # ★ 2026-08-22 镜号归一化：统一 zfill(2)（消除 "1"/"01" 混用，避免拖动 reorder 匹配失败）
             def _zn(n):
                 s = str(n or "").strip()
@@ -306,12 +308,14 @@ for ed in ep_dirs:
             _scene_map, _ch_map = {}, {}
             _battle_segments = []
             _sbvps, _sbcfg = [], {}
+            _spmaps = []
     else:
         _beats_path = os.path.join(BASE, "outputs/xiajing", ed, "beats.json")
         _title, _tone, _status, _sb_img, _sb_rd, _edited_shots = f"第{ep_num}集", {}, {}, "", False, None
         _scene_map, _ch_map = {}, {}
         _battle_segments = []
         _sbvps, _sbcfg = [], {}
+        _spmaps = []
         if os.path.exists(_beats_path):
             try:
                 _beats = json.load(open(_beats_path, encoding="utf-8"))
@@ -371,6 +375,8 @@ for ed in ep_dirs:
             "source": _s.get("source", ""),
             # ★ 2026-09-09 镜级章节透传（前端按 chapter_range 选当前剧情身份，缺则身份选择退化）
             "chapter": _s.get("chapter", ""),
+            # ★ 2026-09-09 镜级空间拓扑图资产名（引用行末位/垫图对应场）
+            "space_map": _s.get("space_map", ""),
             # ★ 2026-08-22 分镜大纲字段（Tab1 7 列）：大纲生成器写回，缺省回退完整字段
             "outline_visual": _s.get("outline_visual") or _s.get("visual", ""),
             "outline_dialogue_sound": _s.get("outline_dialogue_sound") or (_s.get("dialogue", "") + ((" · " + _s.get("sound", "")) if _s.get("sound") else "")),
@@ -423,6 +429,7 @@ for ed in ep_dirs:
         "storyboards": _storyboards,
         "storyboard_config": _sbcfg,
         "storyboard_video_prompts": _sbvps,
+        "space_maps": _spmaps,
         "scene_map": _scene_map,
         "ch_map": _ch_map,
         "battle_segments": _battle_segments,
