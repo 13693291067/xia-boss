@@ -133,13 +133,26 @@ def main():
         if _miss:
             problems.append("[E草图层] %d/%d 镜缺 sketch_prompt：%s"
                             % (len(_miss), len(shots), "、".join(_miss[:10])))
+        # 逐镜按规则引擎校验（规则正本 = xiajing-episodes/references/sketch-prompt-spec.md，
+        # 引擎 = scripts/sketch_rules.py；本门禁不另立判据，避免规则出现第二副本）
+        try:
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import sketch_rules as _SR
+        except Exception as e:
+            _SR = None
+            problems.append("[E草图规则] 无法载入 sketch_rules（%s）——E 项已降级为仅查框架" % e)
         for s in shots:
             sp = str(s.get("sketch_prompt") or "").strip()
             if not sp:
                 continue
-            if not (sp.startswith("黑白草图，") and "快速铅笔线条" in sp and "干净纸面" in sp):
-                problems.append("[E草图模板] 镜%s 不合纪律 15 固定模板（须「黑白草图，{画面描述}。；快速铅笔线条，"
-                                "未完成感，干净纸面。」），当前：%s" % (s.get("shot_number"), sp[:40]))
+            if _SR is not None:
+                _chars = str(s.get("characters") or u"")
+                _hc = bool(_chars.strip()) and (u"空镜" not in _chars)
+                bad = _SR.validate(sp, has_character=_hc)
+                for b in bad:
+                    problems.append("[E草图规则] 镜%s %s ｜%s" % (s.get("shot_number"), b, sp[:36]))
+            elif not (sp.startswith(u"黑白草图，") and u"快速铅笔线条" in sp and u"干净纸面" in sp):
+                problems.append("[E草图模板] 镜%s 不合固定模板框架" % s.get("shot_number"))
 
     print("剧本秒段: %d | 剧本台词引文: %d | 镜头: %d" % (len(segs), len(script_quotes), len(shots)))
     if problems:
@@ -171,15 +184,23 @@ def selftest():
                 "scene_name": u"场甲 \u00b7 区1", "dialogue": u"\u89d2\u8272A\uff1a\u300c\u53f0\u8bcd\u7532\u3002\u300d",
                 "duration": 3}
         if mode == "clean":
-            shot["sketch_prompt"] = u"黑白草图，角色A 站立于区1，平视中景。；快速铅笔线条，未完成感，干净纸面。"
+            shot["sketch_prompt"] = (u"黑白草图，场甲 · 区1；角色A 站立于区1 右侧，抬手推开门，角色B 蹲在门内侧；"
+                                 u"构图 双人对角、门框占右三分之一，画面右；中近景·平视。；"
+                                 u"快速铅笔线条，未完成感，干净纸面。")
         elif mode == "bad_template":
             shot["sketch_prompt"] = u"角色A 站立，彩色效果图。"
+        elif mode == "bad_rule":
+            # 框架齐、内容违规：神态未剥离 + 缺侧别断言（证明 §3.2 剥离表与 §四 侧别硬规则在生效）
+            shot["sketch_prompt"] = (u"黑白草图，场甲 · 区1；角色A 眼神震惊地望向门口，神色僵住；"
+                                     u"构图 双人对角；中近景·平视。；"
+                                     u"快速铅笔线条，未完成感，干净纸面。")
         doc = {"shots": [shot]}
         io.open(_os.path.join(tmp, "outputs", "xiajing", "ep001", "shots.json"), "w", encoding="utf-8").write(
             json.dumps(doc, ensure_ascii=False))
 
     cases = [(u"投毒\u00b7整层缺失", "missing", True),
              (u"投毒\u00b7模板不符", "bad_template", True),
+             (u"投毒\u00b7神态未剥离缺侧别", "bad_rule", True),
              (u"干净\u00b7草图齐备", "clean", False)]
     failed = 0
     for label, mode, expect in cases:
