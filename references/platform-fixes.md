@@ -781,7 +781,7 @@
 - **规范挂载（用户指令）**：quality-spec.md 一字不改副本 → `modules/storyboard-cinematic/references/`；storyboard-cinematic SKILL.md 新增 §1.9 + references 表 + 自检清单 H3 合规项；主 SKILL.md 同步。
 - **流程定稿（用户两轮拍板）**：**同步双产**——Stage 2 生成每段视频提示词时同步产出 H3 六段式（一次双份、禁止事后补转化）；字段契约 = 每段 `video_prompt` + `video_prompts.h3`；独立交付 md/html 每段双块双复制按钮；工作台 h3 槽位有值直接采用；质量闸 = quality-spec §9 清单全过。
 - **函数初稿 v2（六处修正，项目+模板双修 tingfeng.js）**：①去字段标签→英文引导句 + 景别缩写英译（TF_FRAME_EN：ECU/CU/MCU/MS/WS/ELS）；②台词四件套——说话人 `(Sx)` 按发声顺序分配（dialogue 冒号前解析说话人、括号注释剥离）、「画外」检测写 `says in an off-screen voiceover`、`<d>[Chinese] 原话</d>`、在画角色闭嘴声明（说话人≠在画角色时）；③拓扑图 `<Picture N> is a spatial-planning reference...` 立条（不占 Subject 编号），正文在航拍/俯拍/大远景首镜处引用 + summary 提及；④retention 按 role 分模板（character=外观服装 / scene=地标布局 / prop=外观摆放）+ Picture 规划行写「被遵循的空间关系」；⑤NEGATIVE 丢弃 + STYLE 缺 `infer` 防污染句时补规范标准句；⑥soundscape 聚合各镜音效点名（≤3 条去重）。**附修 v1 丢对白 bug**：v1 的 clean 直接剥掉 visual 尾巴导致「dialogue 字段空、对白混在 visual 里」的段丢失对白（ep001 shot02 实例）——v2 `tfH3SplitTail` 把尾巴拆成 主画面/对白/音效 复用。版本号 20260901s→t 双边对齐；弹窗 H3 分支加初稿提示行。
-- **验证**：node --check ×2 过；Node 沙箱 + ep001 数据实测 15/15 项全过（含四件套完整形态 `苏老太 (S1) says in an off-screen voiceover: <d>[Chinese] …</d> while <Subject 1>'s lips remain completely closed.`）。
+- **验证**：node --check ×2 过；Node 沙箱 + ep001 数据实测 15/15 项全过（含四件套完整形态 `角色A (S1) says in an off-screen voiceover: <d>[Chinese] …</d> while <Subject 1>'s lips remain completely closed.`（实测取自当时项目真实数据，角色名已按最高纪律脱敏））。
 - **教训**：①审查 AI 产出要用独立权威规范逐条对照而不是自我感觉良好——9 节踩 7 全是「格式对、质量不合格」；②程序转换的硬天花板（中文→英文/拆镜判断）要显式划给 AI 并写进流程（同步双产），不要让兜底初稿冒充终稿；③数据清洗（剥尾巴）前先想清楚被剥内容是否有独立字段承接，没有就是丢数据。
 
 ## 90. quality-spec 挂载 + H3「同步双产」定稿 + 函数初稿 v2（2026-09-02 晚，★ 用户两轮拍板）
@@ -790,7 +790,7 @@
 - **规范挂载（用户指令）**：quality-spec.md 一字不改副本 → `modules/storyboard-cinematic/references/`；storyboard-cinematic SKILL.md 新增 §1.9 + references 表 + 自检清单 H3 合规项；主 SKILL.md 同步。
 - **流程定稿（用户两轮拍板）**：**同步双产**——Stage 2 生成每段视频提示词时同步产出 H3 六段式（一次双份、禁止事后补转化）；字段契约 = 每段 `video_prompt` + `video_prompts.h3`；独立交付 md/html 每段双块双复制按钮；工作台 h3 槽位有值直接采用；质量闸 = quality-spec §9 清单全过。
 - **函数初稿 v2（六处修正，项目+模板双修 tingfeng.js）**：①去字段标签→英文引导句 + 景别缩写英译（TF_FRAME_EN：ECU/CU/MCU/MS/WS/ELS）；②台词四件套——说话人 `(Sx)` 按发声顺序分配（dialogue 冒号前解析说话人、括号注释剥离）、「画外」检测写 `says in an off-screen voiceover`、`<d>[Chinese] 原话</d>`、在画角色闭嘴声明（说话人≠在画角色时）；③拓扑图 `<Picture N> is a spatial-planning reference...` 立条（不占 Subject 编号），正文在航拍/俯拍/大远景首镜处引用 + summary 提及；④retention 按 role 分模板（character=外观服装 / scene=地标布局 / prop=外观摆放）+ Picture 规划行写「被遵循的空间关系」；⑤NEGATIVE 丢弃 + STYLE 缺 `infer` 防污染句时补规范标准句；⑥soundscape 聚合各镜音效点名（≤3 条去重）。**附修 v1 丢对白 bug**：v1 的 clean 直接剥掉 visual 尾巴导致「dialogue 字段空、对白混在 visual 里」的段丢失对白（ep001 shot02 实例）——v2 `tfH3SplitTail` 把尾巴拆成 主画面/对白/音效 复用。版本号 20260901s→t 双边对齐；弹窗 H3 分支加初稿提示行。
-- **验证**：node --check ×2 过；Node 沙箱 + ep001 数据实测 15/15 项全过（含四件套完整形态 `苏老太 (S1) says in an off-screen voiceover: <d>[Chinese] …</d> while <Subject 1>'s lips remain completely closed.`）。
+- **验证**：node --check ×2 过；Node 沙箱 + ep001 数据实测 15/15 项全过（含四件套完整形态 `角色A (S1) says in an off-screen voiceover: <d>[Chinese] …</d> while <Subject 1>'s lips remain completely closed.`（实测取自当时项目真实数据，角色名已按最高纪律脱敏））。
 - **教训**：①审查 AI 产出要用独立权威规范逐条对照而不是自我感觉良好——9 节踩 7 全是「格式对、质量不合格」；②程序转换的硬天花板（中文→英文/拆镜判断）要显式划给 AI 并写进流程（同步双产），不要让兜底初稿冒充终稿；③数据清洗（剥尾巴）前先想清楚被剥内容是否有独立字段承接，没有就是丢数据。
 
 ## 91. MiniMax H3 官方 API 接入（apiFormat=minimax_h3，替换 888 的 H3 视频路径）（2026-09-02 深夜，★ 新协议）

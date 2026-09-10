@@ -33,8 +33,8 @@
 - 说话人边界规则：**从不发声的角色不编号**（只露脸、只被提及不给 `(Sx)`）；同一说话人跨镜头保持同 ID；多人齐声写 `(S1,S2)`。
 - 台词跨切点：在两部分衔接处用 `<scenetrans>`，并明确声明音频跨切点延续（`continues seamlessly across the cut` / `carries over from the previous shot`）；台词被视频结尾截断：用 `<cutoff>`。
 - 反例 → 正例：
-  - 反例：`Dialogue: 苏老太（尖锐）：「苏晚晚！你个丧门星！」`
-  - 正例：`An elderly woman's sharp, piercing voice (S1) says in an off-screen voiceover: <d>[Chinese] 苏晚晚！你个丧门星！</d> while <Subject 1>'s lips remain completely closed.`
+  - 反例：`Dialogue: 老妇（尖锐）：「丫头！你个扫把星！」`
+  - 正例：`An elderly woman's sharp, piercing voice (S1) says in an off-screen voiceover: <d>[Chinese] 丫头！你个扫把星！</d> while <Subject 1>'s lips remain completely closed.`（示例台词为虚构，仅演示四件套形态）
 
 ## 3. 标签纪律
 
@@ -77,7 +77,7 @@
 ## 6. 幽灵元素扫描（交付前必做）
 
 - **正文没有的元素，禁止声明存在**：凡写了 `MUST be rendered / must appear / 一定要出现` 的元素，必须在某个镜头的正文里有对应描述；对不上号即为幽灵元素，删除声明或补写镜头。
-- **剧本上下文残留**：转换只针对当前片段节拍；后续情节的道具（系统面板、金手指、信物）、未出场角色、未到节拍的事件不得带入六段正文。
+- **剧本上下文残留**：转换只针对当前片段节拍；后续情节的道具（外挂界面、金手指、信物）、未出场角色、未到节拍的事件不得带入六段正文。
 - **负面清单/禁令不是 H3 合法段落**：`FORBIDDEN: ...` / 负面提示词段落一律不写；关键防污染需求融进风格开场句：
   `this look applies only to the rendering medium, materials, lighting, and finish, and must never be used to infer or change faces, ages, genders, body proportions, clothing, accessories, props, or environments, which always follow the reference pictures and the on-script descriptions.`
 - 自查方法：列出正文声明的全部"必须/一定"元素清单，逐个回正文找镜头归属，找不到即违规。
