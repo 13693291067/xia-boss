@@ -10,6 +10,7 @@
 纪律：本文件禁止出现任何具体项目数据（角色名/场景名/剧名），词表一律通用。
 """
 
+import io
 import re
 
 HEAD = u"黑白草图，"
@@ -204,3 +205,38 @@ def validate(text, has_character=True):
     if u"【待人工补" in body:
         out.append(u"含待人工补占位（脚本不臆造，需人补姿态动作后重跑校验）")
     return out
+
+
+def selftest():
+    """断言：本模块词表 == 规范正本 §3.2 表格（双向逐词）。防止「正本落后于实现」。"""
+    import os as _os
+    import re as _re
+    spec = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "..",
+                         "modules", "xiajing-episodes", "references", "sketch-prompt-spec.md")
+    t = io.open(spec, encoding="utf-8").read()
+    pairs = [(u"表情神态", BAN_EXPRESSION), (u"心理活动", BAN_MIND),
+             (u"台词与声音", BAN_SPEECH), (u"程度与节奏", BAN_DEGREE)]
+    bad = 0
+    print(u"=== sketch_rules --selftest：规范词表漂移检查 ===")
+    for cat, words in pairs:
+        m = _re.search(u"\\| " + cat + u".*?\\| (.*?) \\|", t)
+        if not m:
+            print(u"  [\u274c] 规范缺类别：%s" % cat)
+            bad += 1
+            continue
+        listed = [x for x in m.group(1).split(u"／") if x.strip()]
+        only_spec = [w for w in listed if w not in words]
+        only_code = [w for w in words if w not in listed]
+        ok = not only_spec and not only_code
+        if not ok:
+            bad += 1
+        print(u"  [%s] %-8s 规范多:%s 代码多:%s" % (u"OK" if ok else u"\u274c 漂移", cat,
+                                                only_spec or u"—", only_code or u"—"))
+    return 1 if bad else 0
+
+
+if __name__ == u"__main__":
+    import sys as _sys
+    if u"--selftest" in _sys.argv:
+        import io as _io
+        _sys.exit(selftest())
