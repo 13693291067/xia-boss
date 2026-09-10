@@ -22,8 +22,9 @@ function renderXiajing(){
     {k:"shots", label:"📋 分镜脚本"},
     {k:"storyboard", label:"🖼 故事板"},
     {k:"make", label:"🎬 制作"},
+    {k:"space", label:"🗺 拓扑图"},
   ];
-  const body = {shots:renderShotsTab(ep), make:renderMakeTab(ep), storyboard:renderStoryTab(ep)}[xjCurTab] || "";
+  const body = {shots:renderShotsTab(ep), make:renderMakeTab(ep), storyboard:renderStoryTab(ep), space:renderSpaceTab(ep)}[xjCurTab] || "";
   return `
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
     <span class="back" onclick="backToEpGrid()">← 返回剧集列表</span>
@@ -36,6 +37,94 @@ function renderXiajing(){
   </div>
   <div>${body}</div>`;
 }
+
+// ===== ★ 2026-09-10 3.5.14 空间拓扑图资产位（虾镜线；结构对齐听风 tf_space_map，两条线数据链仍完全隔离）=====
+// 数据契约：ep.space_maps = [{name, prompt, prompt_cn, image, ready}]（每场一张，name 带场标识如"空间拓扑图·场1"）
+//          旧单数字段 space_map_prompt/space_map_image 兼容归一化为单项集合（旧项目数据一律不动）
+// 原缺口：虾镜此前无任何渲染位 → 用户无处上传，"每场一张"的拓扑图只能靠手改 json，D2 长期红灯
+function xjSpaceMaps(ep){
+  let arr = Array.isArray(ep.space_maps) ? ep.space_maps.filter(Boolean) : [];
+  if(!arr.length && ((ep.space_map_prompt && String(ep.space_map_prompt).trim()) || (ep.space_map_image && String(ep.space_map_image).trim()))){
+    arr = [{name:"空间拓扑图", prompt: ep.space_map_prompt||"", image: ep.space_map_image||"", ready: !!ep.space_map_image}];
+  }
+  return arr;
+}
+function _xjEnsureMap(ep, idx){
+  const maps = (Array.isArray(ep.space_maps) ? ep.space_maps.filter(Boolean) : []);
+  while(maps.length <= idx) maps.push({name:"空间拓扑图·场"+(maps.length+1), prompt:"", image:"", ready:false});
+  ep.space_maps = maps;
+  return maps[idx];
+}
+// 镜 → 所属场拓扑图：优先 s.space_map（场标识，AI 拆镜时写入），name 包含匹配；无则第一张（旧数据=归一化单项）
+function xjShotSpaceMap(ep, s){
+  const arr = xjSpaceMaps(ep);
+  if(!arr.length) return null;
+  const key = String((s && s.space_map) || "").trim();
+  if(key){ const hit = arr.find(m => String(m.name||"").indexOf(key) >= 0); if(hit) return hit; }
+  return arr[0];
+}
+function renderSpaceTab(ep){
+  const maps = xjSpaceMaps(ep);
+  const shots = xjShots(ep);
+  const cards = maps.map((m, i) => {
+    const ready = !!(m.image && String(m.image).trim());
+    const img = ready ? esc(imgSrc(m.image)) : "";
+    const label = esc(m.name || ("空间拓扑图·场" + (i+1)));
+    const nShots = shots.filter(s => String((s.space_map||"").trim()) && String(s.space_map).indexOf(m.name||"__none__") >= 0).length;
+    return `
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px dashed #c4b5fd;border-radius:10px;background:#faf5ff;margin-bottom:8px">
+      <div style="width:150px;height:84px;border-radius:8px;overflow:hidden;background:#e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;${ready?`cursor:zoom-in`:`cursor:default`}" ${ready?`onclick="openZoom('${img}','${label}')" title="点击放大"`:`title="该场拓扑图待生成（点右侧 ✨ 生图或 ↑ 上传）"`}>
+        ${ready?`<img src="${img}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`:`<span style="display:block;width:100%;height:100%"></span>`}
+      </div>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:13px">🗺 ${label} ${ready?'<span class="pill" style="font-size:10px">✅ 已回填</span>':'<span class="pill" style="font-size:10px;color:#b45309">⏳ 未回填</span>'}</b>
+        <div style="font-size:11px;color:var(--mut);margin-top:2px">本场机位调度（站位/轴线/CAM/越轴预案）· 黑白简笔垫图 · 每场一张 · 被 ${nShots} 镜引用</div>
+        ${(m.prompt || m.prompt_cn) ? `<details style="margin-top:4px"><summary style="cursor:pointer;font-size:11px;color:#0f766e;user-select:none">📝 拓扑图提示词${m.prompt_cn?"（双语）":""}</summary><div style="margin-top:4px">${promptBlockDual(m.prompt_cn, m.prompt)}</div></details>` : `<div style="font-size:11px;color:#b45309;margin-top:2px">该场提示词未产出——AI 做空间拓扑图时写入 space_maps[i].prompt</div>`}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex-shrink:0">
+        <label class="btn primary" style="cursor:pointer">↑ 上传<input type="file" accept="image/*" style="display:none" onchange="doUpload(this,'space_map','xj-space-map-${ep.number}-${i}')"></label>
+        <button class="pill primary" onclick="xjSpaceMapGen(${ep.number},${i})" title="生成该场空间拓扑图（弹窗中可编辑提示词）">✨ 生图</button>
+      </div>
+    </div>`;
+  }).join("");
+  const unbound = shots.filter(s => !String(s.space_map||"").trim()).length;
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:600">🗺 空间拓扑图（每场一张 · 场景切分口径=摄影机需要搬运就拆图）</span>
+      <button class="pill" onclick="xjSpaceMapAdd(${ep.number})" title="为本集新增一场的拓扑图条目">＋ 新增场次</button>
+    </div>
+    ${cards || `<div style="padding:10px;color:var(--mut);font-size:12px;border:1px dashed #d7dee8;border-radius:8px;margin-bottom:8px">尚无场次条目——点「＋ 新增场次」建第一场（提示词由 AI 做空间拓扑图时写入 space_maps；每场一张，禁多场挤一图）</div>`}
+    <div style="margin-top:10px;padding:8px 10px;border-radius:8px;background:${unbound?'#fff7ed':'#f0fdf4'};font-size:11px;color:${unbound?'#b45309':'#166534'}">
+      ${unbound ? `⚠️ ${unbound} 镜未标注所属场（space_map 字段为空）→ 这些镜投喂时拿不到空间锚，请 AI 拆镜时补齐` : `✅ 全部 ${shots.length} 镜均已标注所属场拓扑图`}
+      ｜门禁：回填后跑 <code>check-scenes.py --shots shots.json --scenes assets-registry.json</code>，D2 应清零
+    </div>`;
+}
+function xjSpaceMapAdd(epN){
+  const ep = (xjEps()).find(e => e.number === epN);
+  if(!ep){ toast("未找到该集"); return; }
+  const idx = xjSpaceMaps(ep).length;
+  _xjEnsureMap(ep, idx);
+  xjSpaceMapGen(epN, idx);
+}
+function xjSpaceMapGen(epN, idx){
+  if(!IS_SERVER){ toast("AI 生成需要服务模式：请双击「启动项目台.bat」"); return; }
+  const ep = (xjEps()).find(e => e.number === epN);
+  const i = Number(idx) || 0;
+  const m = (ep && _xjEnsureMap(ep, i)) || null;
+  const own = (m && m.prompt && String(m.prompt).trim()) || "";
+  if(!own) toast("💡 该场专属拓扑图提示词未产出，已预填黑白简笔通用骨架——按本场布局修改后再生成");
+  openGenModal("space_map", "xj-space-map-" + epN + "-" + i, own || XJ_SPACE_MAP_GENERIC, "", (m && m.prompt_cn) || "");
+}
+// 通用骨架（黑白简笔规范占位符，仅当该场 prompt 缺失时回退；规范单源 = references/shared-spatial-blocking.md §十）
+const XJ_SPACE_MAP_GENERIC = `16:9 横屏白底简笔示意图，手绘风格平面俯视机位调度图（hand-drawn blueprint sketch style）：
+[围合四面：<北/东/南/西 各面是实墙/矮墙/篱笆/房屋/开口——逐面写明，不留空>]；
+[固定锚点：<门/窗/灶/筐/树等地物及其方位>]；
+[站位：实心圆点+短朝向箭头=各角色位置与面朝方向，箭头只贴在圆点上]；
+[两点间一条红色虚线直线 = 180° 动作轴线，轴线两端不得带箭头]；
+[机位：若干小相机图标 CAM1~CAM4 全部布置在轴线同一侧（same side），细弧线示意调度]；
+[纵深边界：门外/窗外可见什么、不得出现什么，逐条点名]。
+仅黑白灰 + 一处红色虚线轴，线条干净，无人物造型、无写实渲染、无光影质感（no photorealism），
+no text labels other than CAM numbers, no character names, no arrows on the axis`;
 
 // ===== Tab1 分镜脚本（★ 2026-08-22 重构：大纲 7 列：镜号/秒/景别/运镜/画面要点/台词声音/叙事功能）=====
 function renderShotsTab(ep){

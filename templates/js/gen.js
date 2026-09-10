@@ -1362,6 +1362,20 @@ function markReadyInMemory(category, name, histPath, newPath, ep){
     if(typeof rerenderCurrent === "function") rerenderCurrent();
     return;
   }
+  if(category==="space_map"){
+    // ★ 2026-09-10 3.5.14 虾镜拓扑图按场（§6.1 三处成对：后端分支 + 落库 + 前端重绘，缺一则"上传成功但页面不动"）
+    const m = /^xj-space-map-(\d+)-(\d+)$/.exec(base);
+    if(m){
+      (P.xiajing?.episodes||[]).forEach(e => {
+        if(Number(e.number) === Number(m[1])){
+          const mm = _xjEnsureMap(e, Number(m[2]));
+          mm.image = setImg(mm.image, newPath); mm.ready = true; pushHist(mm);
+        }
+      });
+      if(typeof rerenderCurrent === "function") rerenderCurrent();
+    }
+    return;
+  }
   if(category==="character" || category==="identity"){
     (P.xiatang?.characters||[]).forEach(c => {
       if(category==="character"){

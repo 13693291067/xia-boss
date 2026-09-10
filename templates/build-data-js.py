@@ -466,6 +466,26 @@ if sqlite3 is not None:
                 # ★ 2026-09-01 每集独立拓扑图提示词 merge
                 if _oe.get("space_map_prompt") and not _ep.get("space_map_prompt"):
                     _ep["space_map_prompt"] = _oe["space_map_prompt"]
+                # ★ 2026-09-10 3.5.14 按场集合 merge：db 里的 space_maps[].image/ready 是运行时上传产物，
+                #   全量重建必须回灌，否则"上传完一重建就没了"（同 db_sync_xiage 覆盖丢字段一类事故）
+                _old_sms = _oe.get("space_maps")
+                if isinstance(_old_sms, list) and _old_sms:
+                    _new_sms = _ep.setdefault("space_maps", [])
+                    for _oi, _os in enumerate(_old_sms):
+                        if not isinstance(_os, dict):
+                            continue
+                        _nm = str(_os.get("name") or "")
+                        _tgt = next((x for x in _new_sms if isinstance(x, dict) and str(x.get("name") or "") == _nm), None)
+                        if _tgt is None and _oi < len(_new_sms):
+                            _tgt = _new_sms[_oi]
+                        if _tgt is None:
+                            _new_sms.append(dict(_os))
+                            continue
+                        for _k in ("image", "prompt", "prompt_cn"):
+                            if _os.get(_k) and not _tgt.get(_k):
+                                _tgt[_k] = _os[_k]
+                        if _os.get("image"):
+                            _tgt["ready"] = True
         _db2.close()
     except Exception:
         pass
@@ -731,6 +751,9 @@ project = {
         # ★ FS 固定风格库（虾格产出 outputs/fs-library.md，读入供虾镜按 FS-XX 引用与项目台展示）
         "fs_library": (open(os.path.join(BASE, "outputs", "fs-library.md"), encoding="utf-8").read()
                        if os.path.exists(os.path.join(BASE, "outputs", "fs-library.md")) else ""),
+        # ★ 2026-09-10 3.5.14 全剧情绪曲线 + 色调总表（虾格产出 creation-direction.json 字段）：白名单装配器会丢弃未知字段，必须显式放行前端才拿得到
+        "emotion_curve": (creation_dir or {}).get("emotion_curve", {}),
+        "global_tone_table": (creation_dir or {}).get("global_tone_table", {}),
         # ★ 全剧定风格图（美术圣经锚）：assets/styles/style_keyframe*.png 最新一张
         "keyframe": keyframe_info()[0],
         "keyframe_ready": keyframe_info()[1],

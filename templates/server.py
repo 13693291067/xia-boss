@@ -428,6 +428,61 @@ def _tf_space_map_at(_te, _idx):
         _sms.append({"name": "空间拓扑图·场" + str(len(_sms) + 1), "prompt": "", "image": "", "ready": False})
     return _sms[_idx]
 
+
+def _xj_ensure_space_maps(_xe):
+    """归一化虾镜 ep 的 space_maps 集合（★ 2026-09-10 3.5.14；旧单数字段兜底为第 0 项，旧项目数据不丢）"""
+    _sms = _xe.get("space_maps")
+    if isinstance(_sms, list):
+        return _sms
+    _sms = []
+    if _xe.get("space_map_image") or _xe.get("space_map_prompt"):
+        _sms.append({"name": "空间拓扑图", "prompt": _xe.get("space_map_prompt", ""),
+                     "image": _xe.get("space_map_image", ""), "ready": bool(_xe.get("space_map_ready"))})
+    _xe["space_maps"] = _sms
+    return _sms
+
+
+def _xj_space_map_at(_xe, _idx):
+    """取/扩容第 _idx 场条目（每场一张铁律；条目名通用占位场序，AI 产出后覆盖为带场景标识的名字）"""
+    _sms = _xj_ensure_space_maps(_xe)
+    while len(_sms) <= _idx:
+        _sms.append({"name": "空间拓扑图·场" + str(len(_sms) + 1), "prompt": "", "image": "", "ready": False})
+    return _sms[_idx]
+
+
+def _xj_backfill_space_maps(ep_num, idx, rel_path):
+    """★ 2026-09-10 3.5.14 闭环：虾镜拓扑图上传后回写文件真源。
+       只写 db 的话——space_maps.json（单一真源）与 shots.json 内嵌那份都不动，
+       结果 D2 永远红、下次 build-data-js 重建还会被文件覆盖回空。
+       best-effort：文件不在就跳过并记日志，绝不让上传本身失败。"""
+    try:
+        d = os.path.join(PROJECT_ROOT, "outputs", "xiajing", "ep%03d" % int(ep_num))
+        smap = os.path.join(d, "space_maps.json")
+        if not os.path.exists(smap):
+            log(u"⚠️ 拓扑图回写跳过：未找到 %s（db 已更新，请让 AI 补登记该场）" % smap)
+            return False
+        doc = json.load(open(smap, encoding="utf-8"))
+        lst = doc.get("space_maps")
+        if not isinstance(lst, list):
+            lst = []
+            doc["space_maps"] = lst
+        while len(lst) <= idx:
+            lst.append({"name": u"空间拓扑图·场" + str(len(lst) + 1), "prompt": "", "image": "", "ready": False})
+        lst[idx]["image"] = rel_path
+        lst[idx]["ready"] = True
+        open(smap, "w", encoding="utf-8", newline="").write(json.dumps(doc, ensure_ascii=False, indent=2))
+        # shots.json 内嵌一份拷贝（历史坑：改源文件不会自动同步进 shots，而 check-scenes 优先读内嵌那份）
+        shp = os.path.join(d, "shots.json")
+        if os.path.exists(shp):
+            sdoc = json.load(open(shp, encoding="utf-8"))
+            sdoc["space_maps"] = lst
+            open(shp, "w", encoding="utf-8", newline="").write(json.dumps(sdoc, ensure_ascii=False, indent=2))
+        log(u"🗺 拓扑图已回写真源: ep%s 场%d → %s（含 shots.json 内嵌同步）" % (ep_num, idx + 1, rel_path))
+        return True
+    except Exception as e:
+        log(u"⚠️ 拓扑图回写异常（不影响上传）：%s" % e)
+        return False
+
 # 历史归档子目录名
 HIST_DIR = "history"
 
@@ -726,6 +781,13 @@ class Handler(SimpleHTTPRequestHandler):
                             if not isinstance(s.get("video_prompts"), dict):
                                 s["video_prompts"] = {"seedance": "", "h3": ""}
                             s["video_prompts"][save_model] = prompt
+        elif category == "space_map":
+            # ★ 2026-09-10 3.5.14 虾镜拓扑图按场保存提示词：name=xj-space-map-{ep}-{idx} → space_maps[idx].prompt
+            _xsm = _re.match(r'^xj-space-map-(\d+)-(\d+)$', base)
+            for _e in data.get("xiajing", {}).get("episodes", []):
+                if _xsm and int(_e.get("number", 0)) == int(_xsm.group(1)):
+                    _xj_space_map_at(_e, int(_xsm.group(2)))["prompt"] = prompt
+                    ok = True
         elif category == "tf_space_map":
             # ★ 2026-09-04 听风拓扑图按场集合保存提示词：name=tf-space-map-{ep}-{idx} → space_maps[idx].prompt；
             #   旧 name=tf-space-map-{ep} 兼容写 space_map_prompt（原缺口：该类别此前不在 save-prompt 支持列表，提示词保存会 400）
@@ -738,7 +800,7 @@ class Handler(SimpleHTTPRequestHandler):
                 elif _tfe and int(_te.get("number", 0)) == int(_tfe.group(1)):
                     _te["space_map_prompt"] = prompt; ok = True
         else:
-            self.send_json({"ok": False, "error": f"不支持的类别 {category}（仅 character/identity/scene/prop/sketch/blocking/frame/firstframe/tailframe/video/tf_space_map）"}, 400)
+            self.send_json({"ok": False, "error": f"不支持的类别 {category}（仅 character/identity/scene/prop/sketch/blocking/frame/firstframe/tailframe/video/space_map/tf_space_map）"}, 400)
             return
         if ok:
             db_upsert("xiatang", data["xiatang"]) if "xiatang" in data else None
@@ -2665,7 +2727,21 @@ class Handler(SimpleHTTPRequestHandler):
                 apply(k)
         elif category == "space_map":
             # ★ 2026-08-31 空间拓扑图（按集单张）：写 xiajing episodes[ep].space_map_image/space_map_ready
+            # ★ 2026-09-10 3.5.14 新增按场：name=xj-space-map-{ep}-{idx} → 写 space_maps[idx].image/ready
+            #   （原缺口：虾镜只有按集单数形态，每场一张的拓扑图无处回填 → 用户无处上传、D2 长期红灯）
+            _xjm = _re.match(r'^xj-space-map-(\d+)-(\d+)$', base)
             for _e in data.get("xiajing", {}).get("episodes", []):
+                if _xjm and int(_e.get("number", 0)) == int(_xjm.group(1)):
+                    _m0 = _xj_space_map_at(_e, int(_xjm.group(2)))
+                    _m0["image"] = f"{rel_dir}/{cur_fname}".replace("\\", "/")
+                    _m0["ready"] = True
+                    _e.setdefault("history", [])
+                    if hist_path and hist_path not in _e["history"]:
+                        _e["history"].insert(0, hist_path)
+                    changed = True
+                    _xj_backfill_space_maps(_xjm.group(1), int(_xjm.group(2)),
+                                            f"{rel_dir}/{cur_fname}".replace("\\", "/"))
+                    continue
                 if int(_e.get("number", 0)) == int(ep or 1):
                     _e["space_map_image"] = f"{rel_dir}/{cur_fname}".replace("\\", "/")
                     _e["space_map_ready"] = True

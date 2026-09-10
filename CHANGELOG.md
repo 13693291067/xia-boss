@@ -9,6 +9,36 @@
 > 2. **日期**：有 ★ 日期者照记；3.2.0 / 3.2.1 / 3.2.2 包内只有版本号无日期，标「日期未标」不猜。
 > 3. **编号约定报备**：`3.4.0` 当次出现**两个并行标签**——裸 `3.4.0`（画面语法横切）与 `v3.4.0-风格库`（虾格风格挂载库，包内 25 处引用）。这是并发会话撞号后按"带后缀不裸用版本号"约定的处置，**保留现状不重编号**：重编号会断掉 25 处已落地的带后缀引用。
 
+## 3.5.14-虾镜拓扑图资产位 — 2026-09-10
+
+> 触发：渔村 ep001 三条 D2 长期红。根因不是"没人回填"，是**虾镜线根本没有回填的入口**——听风 2026-09-04 已把拓扑图升级成按场集合 + 工作台资产位，虾镜侧数据层（`space_maps` 集合、build-data-js 透传）跟上了，但服务端仍是 08-31 的按集单数形态、`save-prompt` 不认这个类别、`xiajing.js` 对拓扑图**零渲染位**。用户没有任何地方能传这三张图。
+
+### ➕ 变更（全部并存新增，旧按集单数字段与听风 tf_space_map 链路一律不动）
+
+- `templates/js/xiajing.js`：虾镜页新增第四个 Tab「🗺 拓扑图」；`xjSpaceMaps`（旧单数字段兼容归一化）/ `_xjEnsureMap` / `xjShotSpaceMap` / `renderSpaceTab`（每场一张卡：缩略图、已回填·未回填角标、点击放大、✨生图、↑上传、被引用镜数、未标注所属场的告警与 D2 提示）/ `xjSpaceMapAdd` / `xjSpaceMapGen` / `XJ_SPACE_MAP_GENERIC`（黑白简笔通用骨架，纯占位符零项目词）。
+- `templates/server.py`：新增 `_xj_ensure_space_maps` / `_xj_space_map_at`；`mark_ready` 的 `space_map` 类别升级为按场（`xj-space-map-{ep}-{idx}`），旧按集行为保留；`save-prompt` 支持列表补 `space_map`（此前保存会 400）；新增 `_xj_backfill_space_maps` —— **上传一次写齐三处**：db → `space_maps.json`（单一真源）→ `shots.json` 内嵌那份（历史坑：只改源文件不同步 shots，而 `check-scenes` 优先读内嵌那份）。
+- `templates/js/gen.js`：`markReadyInMemory` 补 `space_map` 分支（§6.1 三处成对，缺则"上传成功但页面不动"）。
+- `templates/build-data-js.py`：按场集合 merge —— 全量重建时把 db 里的 `space_maps[].image/ready/prompt` 回灌，否则"上传完一重建就没了"（同 `db_sync_xiage` 覆盖丢字段一类事故）。
+- `templates/index.html`：`gen.js` / `xiajing.js` 的 `?v=` 递增（模板纪律 ⑥）。
+- SKILL.md §0.7 空间横切条 + 虾镜模块纪律 13b：登记该资产位与"AI 写 json、用户上传、服务端回写三处、D2 自动清零"的分工。
+
+### ✅ 回归（端到端实测，非纸面）
+
+真起一个服务（8321）POST 一张 PNG 到 `/upload?category=space_map&name=xj-space-map-1-0.png` → 响应 ok；`space_maps.json` 场1 `image/ready` 已写、场2 未受影响；`shots.json` 内嵌那份同步；db `xiajing.episodes[0].space_maps[0]` 到位；服务端日志留痕；**`check-scenes` D2 由 3 条降到 2 条**。测试图与三份被改文件已从备份原样复原。JS 括号/模板字符串平衡校验过，`py_compile` 全过。
+
+### 🔴 过程中我自己造成的两起事故（如实记录）
+
+1. **把 `templates/js/gen.js` 清空了**：补丁脚本写回用了 `io.open(path,"w").write(staged[key])` —— Python 先求值 `open(...,"w")` 就把文件截断，随后取 `staged[key]`（键名一处用 `/` 一处用 `\`）抛 KeyError，结果文件 0 字节。已 `git checkout` 复原，与备份逐字节比对（忽略 CRLF 差异）确认**零内容损失**。
+2. **`patch()` 每次都从磁盘重读**：导致同一文件的多次补丁互相覆盖，server.py 第一轮只有最后一处生效；且体积守卫在逐文件写入中途才触发，等于"半套契约"落盘。已改为**一律基于内存 staged 累积 + 全部断言通过后先写 `.new` 再原子替换**，正是纪律 21 要求我做而第一次没做到的形态。
+3. 附带：新加的 helper 用了 `io.open` 而 server.py 未 `import io`——`py_compile` 查不出，靠"读 import 段"人工兜住后改为 `open`。教训：**py_compile 只保证语法，运行时 NameError 要靠真跑一遍端到端**。
+
+### 📎 证据
+
+- `templates/server.py`（`_xj_backfill_space_maps` 及 mark_ready/save-prompt 两处分支）
+- `templates/js/xiajing.js`（第四 Tab 与拓扑图模块）、`templates/js/gen.js`（成对分支）、`templates/build-data-js.py`（集合 merge）
+
+---
+
 ## 3.5.13-契约闭环修正 — 2026-09-10
 
 > 触发：3.5.12 交付后自检，查出三条"声称闭环、实际缺一半"。性质：契约补全 + 门禁判据修正 + 脚本防覆盖，不改生成链。
