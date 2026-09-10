@@ -146,7 +146,7 @@
 - 风格段由脚本**逐字**取合同「风格质感：」行，禁止手抄删减（实测手抄删掉后半段会让画风漂向写实）。
 - 产物落 `<项目>/outputs/xiatang/layout-prompts-空间基准图.md`（**新文件名，勿覆盖 `asset-prompts.md`**）。
 - `space-truth.json` 的 `approved != true` 时脚本拒绝出词（`--allow-unapproved` 仅用于草稿预览）。
-- 门禁：`python modules/scene-consistency/scripts/check-space-truth.py --check <space-truth.json>`（七道，含 `--selftest` 投毒对照）。
+- 门禁：`python modules/scene-consistency/scripts/check-space-truth.py --check <space-truth.json>`（八道，含 `--selftest` 投毒对照）。
 
 ### A2·6 分诊：什么病找哪张图
 

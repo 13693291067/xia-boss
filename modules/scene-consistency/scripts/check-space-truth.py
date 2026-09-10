@@ -7,7 +7,7 @@ check-space-truth.py —— 空间真理图（space-truth.json）门禁，单源
 并存声明：本脚本不改动 check-assets.py / check-scenes.py / check-fidelity.py 的任何既有行为，
           只读 space-truth.json，独立可跑。
 
-七道门禁：
+八道门禁：
   G1 锚点出处必填        —— 每个 anchor 要有 source；标 INFER 的必须给 basis
   G2 围合/边界四面必填   —— enclosed 必须 N/E/S/W 齐；linear|open 必须声明 sides
   G3 海（主地标）方位可达 —— sea_bearing 那一面不得是实墙/房屋，否则看不见
@@ -307,7 +307,7 @@ def main():
         return 2
 
     state = "已确认" if data.get("approved") else "待你确认（approved=false，下游不得派生出图）"
-    print("[ OK ] space-truth 七道门禁全过 —— %s / %s" % (data.get("episode", "?"), state))
+    print("[ OK ] space-truth 八道门禁全过 —— %s / %s" % (data.get("episode", "?"), state))
     return 0
 
 

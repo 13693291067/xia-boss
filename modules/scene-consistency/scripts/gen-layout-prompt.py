@@ -134,13 +134,45 @@ def fs_from_keyscene(path):
 
 
 def enclosure_lines(m):
+    """围合型读 enclosure 四面；线性/开放型读 sides + axis，未声明的面标注为沿通路开敞。"""
     en, cn = [], []
-    enc = m.get("enclosure") or {}
+    enc = m.get("enclosure")
+    if enc:
+        for side in ("N", "E", "S", "W"):
+            cell = enc.get(side) or {}
+            ty = cell.get("type", "none")
+            en.append("%s = %s" % (SIDE_NAME_EN[side], ENC_EN.get(ty, ty)))
+            cn.append("%s（%s）= %s" % (SIDE_NAME_CN[side], SIDE_NAME_EN[side], ENC_CN.get(ty, ty)))
+        return en, cn
+    sides = m.get("sides") or {}
     for side in ("N", "E", "S", "W"):
-        cell = enc.get(side) or {}
-        ty = cell.get("type", "none")
-        en.append("%s = %s" % (SIDE_NAME_EN[side], ENC_EN.get(ty, ty)))
-        cn.append("%s（%s）= %s" % (SIDE_NAME_CN[side], SIDE_NAME_EN[side], ENC_CN.get(ty, ty)))
+        cell = sides.get(side)
+        if cell:
+            ty = cell.get("type", "none")
+            en.append("%s = %s" % (SIDE_NAME_EN[side], ENC_EN.get(ty, ty)))
+            cn.append("%s（%s）= %s" % (SIDE_NAME_CN[side], SIDE_NAME_EN[side], ENC_CN.get(ty, ty)))
+        else:
+            en.append("%s = open along the passage axis, no boundary" % SIDE_NAME_EN[side])
+            cn.append("%s（%s）= 沿通路方向开敞，无边界" % (SIDE_NAME_CN[side], SIDE_NAME_EN[side]))
+    axis = m.get("axis") or {}
+    if axis.get("from") and axis.get("to"):
+        en.append("NOTE: this is a LINEAR passage running from the %s end toward the %s end"
+                  % (axis["from"], axis["to"]))
+        cn.append("注：本空间为线性通路，自%s端延伸至%s端" % (axis["from"], axis["to"]))
+    return en, cn
+
+
+def view_lines(m):
+    """视角随母版类型走：围合型用南侧上空朝北看；线性/开放型沿通路轴向看。"""
+    if m.get("kind") == "enclosed":
+        return FIXED_VIEW_EN, FIXED_VIEW_CN
+    axis = m.get("axis") or {}
+    frm, to = axis.get("from", "E"), axis.get("to", "W")
+    en = ("Scene spatial-reference sheet, 3/4 oblique axonometric view from about 55 degrees above, looking "
+          "along the passage axis from the %s end toward the %s end, so the full length of the route and both "
+          "side edges are readable at once. 16:9, aspect independent of the finished film's ratio." % (frm, to))
+    cn = ("场景空间基准图，3/4 斜俯视轴测、约 55 度俯角，沿通路轴向自%s端看向%s端，"
+          "使整条路径长度与两侧边缘一次读全。16:9，画幅与成片比例解耦。" % (frm, to))
     return en, cn
 
 
@@ -180,13 +212,16 @@ def build_prompt(truth, m, fs_slot):
     enc_en, enc_cn = enclosure_lines(m)
     anc_en, anc_cn = anchor_lines(m)
     sea_en, sea_cn = sea_clause(truth)
+    view_en, view_cn = view_lines(m)
     wl = m.get("object_whitelist", [])
     ev = m.get("env_evidence", [])
+    enc_label = "围合结构·四面必填" if m.get("kind") == "enclosed" else "边界声明·线性/开放空间"
+    enc_label_en = "enclosure - all four sides mandatory" if m.get("kind") == "enclosed" else "boundaries - linear/open space"
 
     en_blocks = [
-        "[视角·固定] " + FIXED_VIEW_EN,
+        "[视角·固定] " + view_en,
         "[风格槽·逐字取合同] " + (fs_slot or "{{FS_SLOT_UNRESOLVED}}"),
-        ("[围合结构·四面必填] The space is enclosed by: " + "; ".join(enc_en) + "."),
+        ("[%s] The space is bounded by: " % enc_label_en + "; ".join(enc_en) + "."),
         ("[锚点段·来自 space-truth，禁止增删] " + "; ".join(anc_en) + "."),
         "[纵深边界·方位钉死] " + (sea_en or "No external landmark bearing declared."),
         ("[环境证据段] Few and causal only: " + ("; ".join(ev) if ev else "none declared") + "."),
@@ -195,9 +230,9 @@ def build_prompt(truth, m, fs_slot):
         "[排除与声明·固定] " + FIXED_EXCL_EN,
     ]
     cn_blocks = [
-        "[视角·固定] " + FIXED_VIEW_CN,
+        "[视角·固定] " + view_cn,
         "[风格槽·逐字取合同] （见上方英文段，中文审稿以同一 FS 编号为准）",
-        ("[围合结构·四面必填] 本空间围合为：" + "；".join(enc_cn) + "。"),
+        ("[%s] 本空间边界为：" % enc_label + "；".join(enc_cn) + "。"),
         ("[锚点段·来自 space-truth] " + "；".join(anc_cn) + "。"),
         "[纵深边界·方位钉死] " + (sea_cn or "未声明外部地标方位。"),
         ("[环境证据段] 少量有因果的痕迹：" + ("；".join(ev) if ev else "无") + "。"),
