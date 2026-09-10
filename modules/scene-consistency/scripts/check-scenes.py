@@ -21,6 +21,7 @@
 
 import argparse
 import json
+import os
 import re
 import sys
 
@@ -167,6 +168,37 @@ def check(path, scene_names, out_path):
                 problems.append(f"[D引用行] 镜{num} 引用顺序错误：空间拓扑图（含场名 空间拓扑图·场N）应在最后（角色→场景→道具→拓扑图），当前末位={ref_names[-1] if ref_names else '空'}")
             if scene and scene not in first_line:
                 problems.append(f"[D引用行] 镜{num} 提示词首行缺本段场景图引用「{scene}」（单条提示词必须自包含场景锚）")
+
+    # ---- D2. 引用的拓扑图必须已登记且成图已回填（★ 2026-09-10 补：防「引用齐全而图全空」静默绿灯）----
+    if has_vp:
+        refs = set()
+        for s in shots:
+            vp = str(s.get("video_prompt") or "").strip()
+            if not vp:
+                continue
+            for nm in _re.findall(r"([^=\s]+)=图\d+", vp.split("\n")[0]):
+                if nm.startswith("空间拓扑图"):
+                    refs.add(nm)
+        smaps = meta.get("space_maps") if isinstance(meta, dict) else None
+        if smaps is None and refs:
+            alt = os.path.join(os.path.dirname(os.path.abspath(path)), "space_maps.json")
+            if os.path.exists(alt):
+                try:
+                    with open(alt, encoding="utf-8") as f:
+                        smaps = (json.load(f) or {}).get("space_maps")
+                except (json.JSONDecodeError, OSError):
+                    smaps = None
+        known = {m.get("name"): m for m in (smaps or []) if isinstance(m, dict)}
+        for nm in sorted(refs):
+            m = known.get(nm)
+            if m is None:
+                problems.append(f"[D2拓扑图未登记] 有镜引用 `{nm}`，但 space_maps 集合里没有这一场"
+                                f"（已登记：{sorted(known) or '空'}）——引用悬空，垫图取不到")
+                continue
+            if not str(m.get("image") or "").strip() or m.get("ready") is not True:
+                problems.append(f"[D2拓扑图未回填] `{nm}` 被引用但成图缺失"
+                                f"（image={'空' if not str(m.get('image') or '').strip() else '有'}"
+                                f"/ready={m.get('ready')}）——P0：引用行指向不存在的图，空间约束在生成时失效")
 
     # ---- 输出 ----
     lines = [
