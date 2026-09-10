@@ -9,6 +9,39 @@
 > 2. **日期**：有 ★ 日期者照记；3.2.0 / 3.2.1 / 3.2.2 包内只有版本号无日期，标「日期未标」不猜。
 > 3. **编号约定报备**：`3.4.0` 当次出现**两个并行标签**——裸 `3.4.0`（画面语法横切）与 `v3.4.0-风格库`（虾格风格挂载库，包内 25 处引用）。这是并发会话撞号后按"带后缀不裸用版本号"约定的处置，**保留现状不重编号**：重编号会断掉 25 处已落地的带后缀引用。
 
+## 3.5.12-契约存在性门禁 — 2026-09-10
+
+> 触发：渔村 ep001 接手自检 + 用户拍板「1-8 全做」。性质：新增三项门禁 + 三条条款回灌 + 一个新脚本；**不改任何生成链行为**。
+
+### 🔴 自审查出的三处「我以为缺、其实另有根因」
+
+1. **引用行不是零门禁，是覆盖面缺半**：`check-scenes` D 查（2026-09-01 就在）只校验 `video_prompt`，`firstframe_prompt` 完全不在射程 → 渔村 51/51 首帧缺引用行仍全绿。修法＝扩字段，不新建门禁。
+2. **镜头标识不是规范缺口，是执行偏差**：`seedance-stylock.md §39-40` 早写明每镜须作 `【镜头N · 景别 · …约X秒·软参考】` 且镜头设计须含 shot size；是项目自造的 `build_prompts_ep001.py` 没照做。修法＝加机械校验（D3），不重述条款（避免造出第三份重复正文）。
+3. **A2 无落库位**：3.5.9 把 layout 定为第四类场景资产，但 `assets-registry.json` 的 `scenes[]` 里没有任何承载字段——"layout 是否存在"根本查不出来。**没有落库位的资产类型等于不存在。**
+
+### ➕ 变更
+
+- `check-scenes.py`：D 查扩到 `firstframe_prompt`（抽成 `_ref_line_problems`，两字段同口径）；新增 **D3 段稿镜头标识**（`【镜头N·景别·…约Xs·软参考】` + 段内序号从 1 连续 + 正文须含景别）；新增 `--selftest` 五例投毒；修掉 D 段删除后遗留的 `_re` 依赖与 `import io` 缺失。
+- `check-assets.py`：新增 **⑨ 陈旧图片指针**、**⑩ 声线字段存在性计数**、**⑪ A2 缺位兜底（`Doorway relation:` 机读标记）** + `--selftest` 六探针。⑮ 首版误报 19 条（按"registry 有 image 字段"判被垫图、且对无门的开放场景也强制），收紧为"图真在盘上 + 正向段确有门/入口/门槛"后降到 4 条，全部为真问题。
+- `check-script-fidelity.py`：新增 **E 草图层存在性与模板合规**（纪律 15 固定模板）+ `--selftest` 三例。
+- `shared-duration-control.md` §三：超时判定单位改为**段（组）总时长**（单镜秒数仅排布参考），并把 **台词跨镜延续**（`<scenetrans>`，机制正本在 quality-spec）列为首选出口、拆镜次选、改剧本段长须拍板。
+- `shared-spatial-blocking.md`：新增 **十六·一·补 中性特写豁免**——脚部/地面/物件极特写不承载左右关系，须显式标「中性特写·不入轴线判断」，否则复核会把合法构图当矛盾改坏。
+- `scene-assets.md`：新增 **A2·2·补 承载字段**（`scenes[].layout_image` / `layout_ready`，缺省视为未就绪）与 **A2·5 缺位兜底**（layout 未 ready 时被垫图的场景空镜须自带 `Doorway relation:`，ready 后自动解除）。
+- 新增 `scripts/gen-topology-feedlist.py`：从 `space_maps.json` 生成投喂清单，只读真源、零硬编码项目词。
+- SKILL.md：纪律 14 项列表补 ⑨⑩⑪、§0.7 虾镜线门禁补 D/E、空间横切条补投喂清单脚本；新增**纪律 22「门禁必须覆盖该产出而没有」**（元教训）。
+
+### ✅ 回归
+
+三个 `--selftest` 全过（check-scenes 5 例、check-assets 6 探针、fidelity 3 例，均含"干净不误报"用例）；渔村真数据复跑：check-scenes 仍 3 条（无新增误报）、check-assets 由 0 变 4 条（3 陈旧指针 + 1 声线整层缺失，全为手工已核实的真问题）、check-script-fidelity 由 PASS 变 FAIL 1 条（草图整层缺失，正是被静默放行的缺口）；`py_compile` 全过；`check-template-hygiene --project-root` 复跑 P0 0 / P1 0（新脚本零项目词）。
+
+### 📎 证据
+
+- `modules/scene-consistency/scripts/check-scenes.py`（`_ref_line_problems` / `_board_label_problems` / `selftest`）
+- `scripts/check-assets.py`（⑨⑩⑪ 段 + `selftest`）、`scripts/check-script-fidelity.py`（E 段 + `selftest`）
+- `scripts/gen-topology-feedlist.py`
+
+---
+
 ## 3.5.11-模板卫生门禁 — 2026-09-10
 
 > 触发：渔村项目接手自检。性质：新增机械门禁 + 模板脱敏，**不动任何生成链与项目产出**。

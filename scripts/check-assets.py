@@ -29,6 +29,7 @@
     CN 有而 EN 缺 → 报错（EN 是生图主字段，缺即不可生成）；两者皆空跳过
 退出码 0=全部通过；1=有问题（逐条打印）
 """
+import io
 import json, os, re, sys
 
 def load_registry(project_root):
@@ -436,12 +437,155 @@ def main():
     for p in d.get("props", []):
         check_pair(p.get("prompt"), p.get("prompt_cn"), f"道具 {p.get('name')}")
 
+    # ================= ★ 2026-09-10 3.5.12 新增三项 =================
+    # 共性根因（渔村 ep001 自检）：旧门禁只校验「已有字段对不对」，对「该产出的整层没产出 /
+    # 指针指向旧文件」完全无感 → 门禁全绿而交付残缺。
+
+    # ⑨ 陈旧图片指针：同目录存在 <stem>-<纯数字时间戳>.<ext> 且 mtime 更新 → registry 仍指旧图
+    import glob as _glob
+    import time as _time
+    _proj = os.path.join(root, "project")
+
+    def _iter_img_refs():
+        for c in d.get("characters", []):
+            yield (u"角色 %s" % c.get("name"), u"主图", c.get("image"))
+            for _idn in c.get("identities", []):
+                _inm = _idn.get("identity_name") or _idn.get("name") or ""
+                yield (u"角色 %s/%s" % (c.get("name"), _inm), u"定妆照", _idn.get("image"))
+                yield (u"角色 %s/%s" % (c.get("name"), _inm), u"四视图", _idn.get("sheet_image"))
+        for _key in ("scenes", "props", "key_scenes"):
+            for it in d.get(_key, []):
+                yield (u"%s %s" % (_key, it.get("name")), u"图", it.get("image"))
+
+    for _label, _slot, _ref in _iter_img_refs():
+        if not _ref:
+            continue
+        _cur = os.path.join(_proj, str(_ref).replace("/", os.sep))
+        if not os.path.exists(_cur):
+            continue                      # 路径不存在由 build-data-js / repair-asset-paths 负责
+        _dd, _fn = os.path.split(_cur)
+        _stem, _ext = os.path.splitext(_fn)
+        _cands = []
+        for _q in _glob.glob(os.path.join(_dd, _stem + "-[0-9]*" + _ext)):
+            _tail = os.path.splitext(os.path.basename(_q))[0]
+            if _tail.startswith(_stem + "-") and _tail[len(_stem) + 1:].isdigit():
+                _cands.append(_q)
+        if _cands:
+            _newest = max(_cands, key=os.path.getmtime)
+            if os.path.getmtime(_newest) > os.path.getmtime(_cur) + 1:
+                print(u"❌ [%s %s] 陈旧指针：现指 %s（%s），同目录存在更新版 %s（%s）——"
+                      u"疑似换风格/重出图后未接回；主图与身份图不同介质会导致锁脸失效"
+                      % (_label, _slot, os.path.basename(_cur),
+                         _time.strftime("%m-%d %H:%M", _time.localtime(os.path.getmtime(_cur))),
+                         os.path.basename(_newest),
+                         _time.strftime("%m-%d %H:%M", _time.localtime(os.path.getmtime(_newest)))))
+                problems += 1
+
+    # ⑩ 声线字段存在性计数（声线是虾塘四域之一，整层缺失必须报）
+    _VOICE_KEYS = ("voice", "voice_prompt", "voice_desc", "voice_cn", "voice_profile")
+    _chars = [c for c in d.get("characters", []) if not c.get("group")]
+    _no_voice = [c.get("name") for c in _chars if not any(str(c.get(k) or "").strip() for k in _VOICE_KEYS)]
+    if _chars and len(_no_voice) == len(_chars):
+        print(u"❌ [声线] 整层缺失：%d/%d 个角色无任何声线字段（%s 之一）——"
+              u"声线与脸/服装同级，是连续性锚点，走到配音合成必卡门控"
+              % (len(_no_voice), len(_chars), "/".join(_VOICE_KEYS)))
+        problems += 1
+    elif _no_voice:
+        print(u"❌ [声线] %d/%d 个角色缺声线：%s"
+              % (len(_no_voice), len(_chars), u"、".join([str(x) for x in _no_voice[:8]])))
+        problems += 1
+
+    # ⑪ 场景图门通向兜底（条款正本 = xiatang scene-assets.md A2·5，此处只机械校验）
+    _DOOR_MARK = "Doorway relation:"
+    _DOOR_WORDS = ("door", "doorway", "gate", "entrance", "threshold",
+                   "门", "门口", "门槛", "入口", "堂屋")
+    for s in d.get("scenes", []):
+        _img = str(s.get("image") or "").strip()
+        if not _img or not os.path.exists(os.path.join(_proj, _img.replace("/", os.sep))):
+            continue                      # ★ 图真在盘上才算「会被垫图」（registry 有路径但文件缺失另由同步检查管）
+        if s.get("layout_ready") is True:
+            continue                      # layout 已回填 → 兜底自动解除，分工回到 A2
+        _pos = pos_part(str(s.get("prompt") or ""))
+        _low = _pos.lower()
+        if not any(w in _low for w in _DOOR_WORDS):
+            continue                      # 开放场景（村道/田野/海面）无门可交代，不强制
+        if _DOOR_MARK not in _pos:
+            print(u"❌ [场景 %s] 已被垫图但 A2 layout 未 ready（layout_ready!=true），提示词缺「%s」声明——"
+                  u"布局权威缺位时门通向无人交代，生图会自行补全（实测：开门见海）"
+                  % (s.get("name"), _DOOR_MARK))
+            problems += 1
+
+
     if problems == 0:
-        print("✅ 全部通过：资产提示词合规（英文纯净/证件照/身份图两图/场景空镜/道具五宫格/三要素内联/CG介质锚/CG强风格化锚/视觉参考注入/依赖门禁/道具锚点/双语成对）")
+        print("✅ 全部通过：资产提示词合规（英文纯净/证件照/身份图两图/场景空镜/道具五宫格/三要素内联/CG介质锚/CG强风格化锚/视觉参考注入/依赖门禁/道具锚点/双语成对/陈旧指针/声线存在/门通向兜底）")
         sys.exit(0)
     else:
         print(f"\n⚠️ 共 {problems} 处问题，请修复后重跑")
         sys.exit(1)
 
+
+def selftest():
+    """投毒对照：临时造最小项目目录，证明 ⑨⑩⑪ 真会报、干净时不误报（探针式断言，不受其他项噪声影响）。"""
+    import shutil
+    import tempfile
+    print(u"=== check-assets --selftest：投毒对照 ===")
+    tmp = tempfile.mkdtemp(prefix="ca_selftest_")
+    proj = os.path.join(tmp, "project", "assets", "characters")
+    os.makedirs(proj)
+    out_dir = os.path.join(tmp, "outputs", "xiatang")
+    os.makedirs(out_dir)
+
+    def build(stale, door, voice):
+        a = os.path.join(proj, "A.png")
+        b = os.path.join(proj, "A-1700000000000.png")
+        io.open(a, "w").write("x")
+        io.open(b, "w").write("yy")
+        os.utime(a, (1600000000, 1600000000))
+        os.utime(b, (1700000000, 1700000000))
+        img = "assets/characters/A.png" if stale else "assets/characters/A-1700000000000.png"
+        ch = {"name": u"角色A", "image": img, "prompt": "x", "prompt_cn": u"x"}
+        if voice:
+            ch["voice"] = u"女·低沉·略哑"
+        dtxt = (" Doorway relation: the door opens onto the yard; only the yard is visible through it; "
+                "no sea and no horizon are visible. ") if door else ""
+        reg = {"characters": [ch],
+               "scenes": [{"name": u"场甲", "image": img, "layout_ready": False,
+                           "prompt": "a room." + dtxt + "Negative prompt: people",
+                           "prompt_cn": u"一间屋"}],
+               "props": [], "key_scenes": []}
+        io.open(os.path.join(out_dir, "assets-registry.json"), "w", encoding="utf-8").write(
+            json.dumps(reg, ensure_ascii=False))
+
+    NEEDLES = [u"陈旧指针", u"[声线]", u"Doorway relation"]
+    sys.argv = ["check-assets.py", tmp]
+    failed = 0
+    for label, args, expect in [(u"投毒·旧指针+无声线+无门通向", (True, False, False), True),
+                                (u"干净·已接回+已补齐", (False, True, True), False)]:
+        build(*args)
+        buf = io.StringIO()
+        old = sys.stdout
+        sys.stdout = buf
+        try:
+            try:
+                main()
+            except SystemExit:
+                pass
+        finally:
+            sys.stdout = old
+        rep = buf.getvalue()
+        for nd in NEEDLES:
+            hit = nd in rep
+            ok = (hit == expect)
+            if not ok:
+                failed += 1
+            print(u"  [%s] %-26s 探针「%s」期望=%s 实际=%s"
+                  % (u"OK" if ok else u"❌ 空转/误报", label, nd, expect, hit))
+    shutil.rmtree(tmp, ignore_errors=True)
+    return 1 if failed else 0
+
+
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.argv = [a for a in sys.argv if a != "--selftest"]
+        sys.exit(selftest())
     main()

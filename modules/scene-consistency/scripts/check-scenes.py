@@ -20,6 +20,7 @@
 """
 
 import argparse
+import io
 import json
 import os
 import re
@@ -98,6 +99,60 @@ def scene_base(scene, scene_names):
 def scene_in_assets(scene, scene_names):
     return any(a and a in (scene or "") for a in (scene_names or []))
 
+def _ref_line_problems(txt, num, scene, field):
+    """单条提示词的顶部资产引用行完整性（★ 2026-09-10 3.5.12 抽成函数：
+    video_prompt 与 firstframe_prompt 同一口径。旧版只跑 video_prompt，
+    渔村 ep001 因此出现「首帧 51/51 缺引用行、门禁全绿」的静默缺口）。"""
+    out = []
+    tag = u"首帧" if field == "firstframe_prompt" else u"视频"
+    first_line = txt.split("\n")[0]
+    ref_names = re.findall(r"([^=\s]+)=图\d+", first_line)
+    if not ref_names:
+        out.append(u"[D引用行] 镜%s %s提示词缺顶部资产引用行（首行应为「【资产引用】 名=图N …」）——垫图无编号表" % (num, tag))
+        return out
+    topo = [j for j, n in enumerate(ref_names) if n.startswith(u"空间拓扑图")]
+    if not topo:
+        out.append(u"[D引用行] 镜%s %s提示词首行缺「空间拓扑图」引用（空间锚缺失）" % (num, tag))
+    elif not ref_names[-1].startswith(u"空间拓扑图"):
+        out.append(u"[D引用行] 镜%s %s引用顺序错误：空间拓扑图应在最后（角色→场景→道具→拓扑图），当前末位=%s"
+                   % (num, tag, ref_names[-1]))
+    if scene and scene not in first_line:
+        out.append(u"[D引用行] 镜%s %s提示词首行缺本段场景图引用「%s」（单条提示词必须自包含场景锚）" % (num, tag, scene))
+    return out
+
+
+def _board_label_problems(boards):
+    """段稿镜头标识（★ 2026-09-10 3.5.12 新增；规范正本 = seedance-stylock.md §39-40，
+    此处不重述条款，只做机械校验）：每镜须写「【镜头N · 景别 · …约Xs·软参考】」，
+    段内序号从 1 连续，且正文须带「景别」。"""
+    out = []
+    if not isinstance(boards, list):
+        return out
+    for b in boards:
+        if not isinstance(b, dict):
+            continue
+        segs = (b.get("video_prompts") or {}).get("seedance") or []
+        for si, seg in enumerate(segs):
+            if not isinstance(seg, str) or u"【" not in seg:
+                continue
+            nums = [int(x) for x in re.findall(u"【镜头(\\d+) · ", seg)]
+            if not nums:
+                out.append(u"[D3镜头标识] 板%s段%d 无「【镜头N · 景别 · …】」标签——段稿未按官方镜头序号组织"
+                           % (b.get("idx"), si))
+                continue
+            if nums != list(range(1, len(nums) + 1)):
+                out.append(u"[D3镜头标识] 板%s段%d 段内镜头序号未从 1 连续：%s" % (b.get("idx"), si, nums))
+            for line in seg.split("\n"):
+                m = re.search(u"【镜头(\\d+) · ([^·]+?) · ", line)
+                if m and u"景别" not in line:
+                    out.append(u"[D3镜头标识] 板%s段%d 镜头%s 正文缺「景别」（stylock §40 要求镜头设计含 shot size）"
+                               % (b.get("idx"), si, m.group(1)))
+            if u"软参考" not in seg:
+                out.append(u"[D3镜头标识] 板%s段%d 逐镜秒数未标「软参考」（分镜层秒数须声明为参考值，见 duration-control §三）"
+                           % (b.get("idx"), si))
+    return out
+
+
 def check(path, scene_names, out_path):
     meta, shots = load_shots(path)
     problems = []
@@ -151,23 +206,13 @@ def check(path, scene_names, out_path):
     #   ① 首行引用行含「空间拓扑图」且在最后（顺序定稿：角色→场景→道具→拓扑图）
     #   ② 首行含本镜 scene_name（场景图引用）
     has_vp = any(str(s.get("video_prompt") or "").strip() for s in shots)
-    if has_vp:
-        for i, s in enumerate(shots):
-            vp = str(s.get("video_prompt") or "").strip()
-            if not vp:
-                continue
-            num = str(s.get("shot_number") or (i + 1))
-            scene = str(s.get("scene_name") or s.get("scene_tag") or "")
-            first_line = vp.split("\n")[0]
-            import re as _re
-            ref_names = _re.findall(r"([^=\s]+)=图\d+", first_line)
-            _topo_idx = [i for i, n in enumerate(ref_names) if n.startswith("空间拓扑图")]
-            if not _topo_idx:
-                problems.append(f"[D引用行] 镜{num} 提示词首行缺「空间拓扑图」引用（空间锚缺失）")
-            elif ref_names[-1] != ref_names[_topo_idx[-1]] or not ref_names[-1].startswith("空间拓扑图"):
-                problems.append(f"[D引用行] 镜{num} 引用顺序错误：空间拓扑图（含场名 空间拓扑图·场N）应在最后（角色→场景→道具→拓扑图），当前末位={ref_names[-1] if ref_names else '空'}")
-            if scene and scene not in first_line:
-                problems.append(f"[D引用行] 镜{num} 提示词首行缺本段场景图引用「{scene}」（单条提示词必须自包含场景锚）")
+    for i, s in enumerate(shots):
+        num = str(s.get("shot_number") or (i + 1))
+        scene = str(s.get("scene_name") or s.get("scene_tag") or "")
+        for field in ("video_prompt", "firstframe_prompt"):
+            txt = str(s.get(field) or "").strip()
+            if txt:
+                problems += _ref_line_problems(txt, num, scene, field)
 
     # ---- D2. 引用的拓扑图必须已登记且成图已回填（★ 2026-09-10 补：防「引用齐全而图全空」静默绿灯）----
     if has_vp:
@@ -176,7 +221,7 @@ def check(path, scene_names, out_path):
             vp = str(s.get("video_prompt") or "").strip()
             if not vp:
                 continue
-            for nm in _re.findall(r"([^=\s]+)=图\d+", vp.split("\n")[0]):
+            for nm in re.findall(r"([^=\s]+)=图\d+", vp.split("\n")[0]):
                 if nm.startswith("空间拓扑图"):
                     refs.add(nm)
         smaps = meta.get("space_maps") if isinstance(meta, dict) else None
@@ -199,6 +244,10 @@ def check(path, scene_names, out_path):
                 problems.append(f"[D2拓扑图未回填] `{nm}` 被引用但成图缺失"
                                 f"（image={'空' if not str(m.get('image') or '').strip() else '有'}"
                                 f"/ready={m.get('ready')}）——P0：引用行指向不存在的图，空间约束在生成时失效")
+
+    # ---- D3. 段稿镜头标识（★ 2026-09-10 3.5.12 补）----
+    if isinstance(meta, dict):
+        problems += _board_label_problems(meta.get("storyboard_video_prompts"))
 
     # ---- 输出 ----
     lines = [
@@ -229,14 +278,82 @@ def check(path, scene_names, out_path):
     print(report)
     return len(problems)
 
+# ===== --selftest：投毒对照（★ 2026-09-10 3.5.12）=====
+def _synth_doc():
+    """造一份「全部合规」的最小 shots 结构（通用占位名，零项目数据）。"""
+    ref = u"【资产引用】 角色A=图1 场甲 › 区1=图2 空间拓扑图·场1=图3"
+    seg = (ref + u"\n  【镜头1 · 近景 · 约3秒·软参考｜原镜号001】镜头设计：景别 近景；平视；构图 居中。"
+                     u"画面剧情（开场→随后→结尾）：站立→抬手。\n")
+    return {
+        "shots": [{
+            "shot_number": "001", "scene_tag": "SC-01", "scene_name": u"场甲 › 区1",
+            "visual": u"角色A 站在区1", "narrative": u"开场",
+            "video_prompt": ref + u"\n正文", "firstframe_prompt": ref + u"\n① 风格与质感： x",
+        }],
+        "space_maps": [{"name": u"空间拓扑图·场1", "image": "assets/scenes/x.png", "ready": True}],
+        "storyboard_video_prompts": [{"idx": 0, "video_prompts": {"seedance": [seg]}}],
+    }
+
+
+def selftest():
+    import copy
+    import contextlib
+    import json as _json
+    import tempfile
+    print(u"=== check-scenes --selftest：投毒对照（门禁必须报，干净必须不报）===")
+    cases = []
+    d = _synth_doc()
+    cases.append((u"干净模板", copy.deepcopy(d), False, u"[D"))
+    d1 = copy.deepcopy(d)
+    d1["shots"][0]["firstframe_prompt"] = u"① 风格与质感： x\n正文"
+    cases.append((u"首帧删引用行", d1, True, u"缺顶部资产引用行"))
+    d2 = copy.deepcopy(d)
+    d2["storyboard_video_prompts"][0]["video_prompts"]["seedance"][0] = (
+        d2["storyboard_video_prompts"][0]["video_prompts"]["seedance"][0]
+        .replace(u"【镜头1 · 近景 · 约3秒·软参考｜原镜号001】", u"【镜001 · 近景 · 约3秒·软参考】"))
+    cases.append((u"段稿退回全局镜号", d2, True, u"D3镜头标识"))
+    d3 = copy.deepcopy(d)
+    d3["shots"][0]["video_prompt"] = (u"【资产引用】 角色A=图1 场甲 › 区1=图2 空间拓扑图·场1=图3\n正文")
+    d3["space_maps"][0]["image"] = ""
+    d3["space_maps"][0]["ready"] = False
+    cases.append((u"拓扑图未回填", d3, True, u"D2拓扑图未回填"))
+    d4 = copy.deepcopy(d)
+    d4["storyboard_video_prompts"][0]["video_prompts"]["seedance"][0] = (
+        d4["storyboard_video_prompts"][0]["video_prompts"]["seedance"][0].replace(u"景别 近景；", u""))
+    cases.append((u"段稿正文缺景别", d4, True, u"正文缺「景别」"))
+
+    failed = 0
+    tmp = tempfile.mkdtemp(prefix="cs_selftest_")
+    for name, doc, expect_hit, needle in cases:
+        p = os.path.join(tmp, "shots.json")
+        open(p, "w", encoding="utf-8").write(_json.dumps(doc, ensure_ascii=False))
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            check(p, [u"场甲"], "")
+        rep = buf.getvalue()
+        hit = needle in rep
+        got = hit if expect_hit else (not hit)
+        flag = "OK" if got else u"❌ 门禁空转/误报"
+        if not got:
+            failed += 1
+        print(u"  [%s] %-14s 期望=%s 实际=%s 探针=%s" % (flag, name,
+              (u"报 " + needle) if expect_hit else u"不报 [D", got, needle in rep))
+    print(u"  临时目录：%s" % tmp)
+    return 1 if failed else 0
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="分镜场景一致性矛盾扫描器（通用模板）")
-    ap.add_argument("--shots", required=True, help="shots.json 路径（顶层含 shots 数组，或直接是数组）")
+    ap.add_argument("--shots", default="", help="shots.json 路径（顶层含 shots 数组，或直接是数组）")
     ap.add_argument("--scenes", default="", help="场景资产清单：json 文件路径 或 逗号分隔场景名列表")
     ap.add_argument("--scene-names", default="", help="逗号分隔场景名（与 --scenes 二选一）")
     ap.add_argument("--out", default="", help="报告输出路径（可选）")
+    ap.add_argument("--selftest", action="store_true", help="投毒对照自检（不读项目数据）")
     args = ap.parse_args()
+    if args.selftest:
+        sys.exit(selftest())
 
+    if not args.shots:
+        ap.error("--shots 必填（或使用 --selftest）")
     names = load_scene_names(args.scenes) if args.scenes else load_scene_names(args.scene_names)
     n = check(args.shots, names, args.out)
     sys.exit(1 if n else 0)

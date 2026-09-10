@@ -117,6 +117,30 @@ def main():
         if re.search(r"\{[^{}]{2,}\}", dia) and not shot_quotes(dia):
             problems.append("[D符号越界] 镜%s dialogue 含 {} 台词标记却无「」引号——本门禁只从「」/引号提台词，此镜 C2「防自创台词」已静默失效。分镜台词须用「」、{} 只进 video_prompt" % (s.get("shot_number") or "?"))
 
+
+    # ---- E. 草图层存在性与模板合规（★ 2026-09-10 3.5.12 新增）----
+    # 条款正本 = xiajing-episodes SKILL.md 纪律 15：sketch_prompt 用中文固定模板
+    #   「黑白草图，{画面描述}。；快速铅笔线条，未完成感，干净纸面。」
+    # 为什么放在保真门禁：旧版 A/B/C/D 全在查「已有字段对不对」，渔村 ep001 因此出现
+    #   「sketch_prompt 0/51 整层缺失、门禁仍 PASS」——协作约定要求草图/首帧/视频逐项给全。
+    _sk_has = [s for s in shots if str(s.get("sketch_prompt") or "").strip()]
+    if shots and not _sk_has:
+        problems.append("[E草图层] 整层缺失：%d/%d 镜无 sketch_prompt——草图是低成本验构图/站位/机位的前置层，"
+                        "跳过它等于每镜直接从文字跳到成品级首帧；协作约定要求草图/首帧/视频逐项给全"
+                        % (len(shots), len(shots)))
+    else:
+        _miss = [str(s.get("shot_number") or "?") for s in shots if not str(s.get("sketch_prompt") or "").strip()]
+        if _miss:
+            problems.append("[E草图层] %d/%d 镜缺 sketch_prompt：%s"
+                            % (len(_miss), len(shots), "、".join(_miss[:10])))
+        for s in shots:
+            sp = str(s.get("sketch_prompt") or "").strip()
+            if not sp:
+                continue
+            if not (sp.startswith("黑白草图，") and "快速铅笔线条" in sp and "干净纸面" in sp):
+                problems.append("[E草图模板] 镜%s 不合纪律 15 固定模板（须「黑白草图，{画面描述}。；快速铅笔线条，"
+                                "未完成感，干净纸面。」），当前：%s" % (s.get("shot_number"), sp[:40]))
+
     print("剧本秒段: %d | 剧本台词引文: %d | 镜头: %d" % (len(segs), len(script_quotes), len(shots)))
     if problems:
         print("❌ 剧本保真门禁 FAIL：%d 处问题" % len(problems))
@@ -125,7 +149,64 @@ def main():
         if len(problems) > 40:
             print("  ……（其余 %d 条略）" % (len(problems) - 40))
         sys.exit(1)
-    print("✅ 剧本保真门禁 PASS：秒段全覆盖 / 出处全部合法 / 台词双向逐字一致")
+    print("✅ 剧本保真门禁 PASS：秒段全覆盖 / 出处全部合法 / 台词双向逐字一致 / 草图层齐备")
+
+
+def selftest():
+    """投毒对照：临时造最小项目（剧本 + shots），证明 E 项真会报、干净时不误报。"""
+    import contextlib
+    import os as _os
+    import shutil
+    import tempfile
+    print("=== check-script-fidelity --selftest：投毒对照 ===")
+    tmp = tempfile.mkdtemp(prefix="csf_selftest_")
+    _os.makedirs(_os.path.join(tmp, "outputs", "xiaju"))
+    _os.makedirs(_os.path.join(tmp, "outputs", "xiajing", "ep001"))
+    md = ("### 循环1\u00b70\u20143\u79d2\n\n- **\u3010\u753b\u9762\u3011 \u89d2\u8272A \u7ad9\u7acb\uff0c\u8bf4\uff1a"
+          "\u300c\u53f0\u8bcd\u7532\u3002\u300d\n")
+    io.open(_os.path.join(tmp, "outputs", "xiaju", "ep001.md"), "w", encoding="utf-8").write(md)
+
+    def build(mode):
+        shot = {"shot_number": "001", "source": u"循环1\u00b70\u20143\u79d2",
+                "scene_name": u"场甲 \u00b7 区1", "dialogue": u"\u89d2\u8272A\uff1a\u300c\u53f0\u8bcd\u7532\u3002\u300d",
+                "duration": 3}
+        if mode == "clean":
+            shot["sketch_prompt"] = u"黑白草图，角色A 站立于区1，平视中景。；快速铅笔线条，未完成感，干净纸面。"
+        elif mode == "bad_template":
+            shot["sketch_prompt"] = u"角色A 站立，彩色效果图。"
+        doc = {"shots": [shot]}
+        io.open(_os.path.join(tmp, "outputs", "xiajing", "ep001", "shots.json"), "w", encoding="utf-8").write(
+            json.dumps(doc, ensure_ascii=False))
+
+    cases = [(u"投毒\u00b7整层缺失", "missing", True),
+             (u"投毒\u00b7模板不符", "bad_template", True),
+             (u"干净\u00b7草图齐备", "clean", False)]
+    failed = 0
+    for label, mode, expect in cases:
+        build(mode)
+        sys.argv = ["check-script-fidelity.py", tmp, "--ep", "1"]
+        buf = io.StringIO()
+        old = sys.stdout
+        sys.stdout = buf
+        try:
+            try:
+                main()
+            except SystemExit:
+                pass
+        finally:
+            sys.stdout = old
+        rep = buf.getvalue()
+        hit = "[E草图" in rep
+        ok = (hit == expect)
+        if not ok:
+            failed += 1
+        print("  [%s] %-16s 期望报=%s 实际=%s" % ("OK" if ok else "\u274c 空转/误报", label, expect, hit))
+    shutil.rmtree(tmp, ignore_errors=True)
+    return 1 if failed else 0
+
 
 if __name__ == "__main__":
+    if "--selftest" in sys.argv:
+        sys.argv = [a for a in sys.argv if a != "--selftest"]
+        sys.exit(selftest())
     main()
