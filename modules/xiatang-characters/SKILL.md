@@ -102,6 +102,13 @@ agent_created: true
 
 ### 角色域
 - [ ] `GET /projects/{project}/characters` 返回 name/aliases/description/role/gender/age_group/body_type/face_prompt/is_main/portrait_url/声线字段
+
+### 声线域契约（★ 2026-09-10 3.5.13 定；此前只写"声线字段"四字、无键名，导致门禁只能猜）
+
+- **唯一键名**：`characters[].voice_desc`（字符串）＝音色/年龄感/语速/气息/口音/情绪底色，一句话可执行；`characters[].voice_ready`（bool）＝样音是否到位（缺省时由 `assets/voices/<角色名>.mp3` 是否存在推断）。
+- **构建必须放行**：`build-data-js.py` 是白名单装配，未知字段会被丢弃——新增契约字段必须同时在装配器里显式放行，否则前端永远拿不到（实测踩过：写入 registry 后重建，db 里为 None）。
+- **门禁**：`check-assets.py` 第 ⑩ 项按本契约查（无一条 voice_desc → 报"声线域未落库"，不再猜键名）。
+- **现状诚实声明**：项目台声线页仍是"开发中"占位（上传/录制按钮 disabled），即**契约已定、UI 生产者未接**；在此之前 ⑩ 会持续报，属预期而非误报。
 - [ ] `POST /characters` 手动添加（重名报 `Character '{name}' already exists`；is_main 自动 unset 其他）
 - [ ] `POST /characters/build` 入队 build_characters（需已摄入，否则 novel_import_required）
 - [ ] `PATCH /characters/{name}` 编辑；`POST /characters/{name}/delete` 删除

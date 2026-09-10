@@ -24,6 +24,9 @@ import os
 import sys
 
 # 通用验收项（与具体项目无关；规范正本 = references/shared-spatial-blocking.md §十 / §十六·一）
+GEN_MARKER = u"<!-- generated-by: gen-topology-feedlist.py v1；项目专属核对项请写进同目录『拓扑图验收-项目专属.md』，本脚本每次都会并入 -->"
+EXTRA_DEFAULT = u"拓扑图验收-项目专属.md"
+
 GENERIC_CHECKS = [
     u"**黑白简笔俯视**，无写实光影、无人物造型、无材质纹理；线条干净，像手绘蓝图",
     u"**图上除 CAM 编号（及规范允许的轴标签）外不得出现任何文字**，尤其不得出现角色名/场景名",
@@ -52,9 +55,10 @@ def load_maps(root, ep):
     return p, json.load(io.open(p, encoding="utf-8"))
 
 
-def build(path, data, require_doorway=False):
+def build(path, data, require_doorway=False, extra_text=None):
     maps = data.get("space_maps") or []
     o = io.StringIO()
+    o.write(GEN_MARKER + u"\n\n")
     o.write(u"# 空间拓扑图·生图投喂清单\n\n")
     o.write(u"> 单一真源：`%s`（本文件由 `gen-topology-feedlist.py` 生成，**手改无效**，改词请改 json）。\n"
             % os.path.relpath(path, os.path.dirname(os.path.dirname(os.path.dirname(path)))).replace("\\", "/"))
@@ -83,6 +87,9 @@ def build(path, data, require_doorway=False):
         o.write(u"%d. 若本场的 A2 layout 图尚未 ready：场景空镜图须自带 `Doorway relation:` 声明"
                 u"（条款正本 = xiatang `scene-assets.md` A2·5），否则门通向无人交代，生图会自行补全\n"
                 % (len(GENERIC_CHECKS) + 1))
+    if extra_text and extra_text.strip():
+        o.write(u"\n## 本集逐场几何核对（项目专属，来自 `%s`）\n\n" % EXTRA_DEFAULT)
+        o.write(extra_text.strip() + u"\n")
     o.write(u"\n## 回填步骤（全部出图后）\n\n")
     for i, s in enumerate(BACKFILL_STEPS, 1):
         o.write(u"%d. %s\n" % (i, s))
@@ -96,10 +103,26 @@ def main():
     ap.add_argument("--out", default="")
     ap.add_argument("--require-doorway", action="store_true",
                     help="追加 A2·5 缺位兜底验收项（layout 未 ready 的项目建议加）")
+    ap.add_argument("--extra-checks", default="",
+                    help=u"项目专属核对项 md 路径；缺省自动找同目录 %s" % EXTRA_DEFAULT)
+    ap.add_argument("--force", action="store_true",
+                    help=u"允许覆盖非本脚本生成的同名文件（无 AUTO-GEN 标记者）")
     args = ap.parse_args()
     path, data = load_maps(os.path.abspath(args.root), args.ep)
     md = build(path, data, args.require_doorway)
     out = args.out or os.path.join(os.path.dirname(path), u"拓扑图生图投喂清单.md")
+    # 防冲掉人手写的同名文件：有内容但没有本脚本的标记 → 必须 --force
+    if os.path.exists(out) and not args.force:
+        old = io.open(out, encoding="utf-8").read()
+        if old.strip() and GEN_MARKER not in old:
+            print(u"\u274c 拒绝覆盖：%s 不是本脚本生成的（缺 AUTO-GEN 标记）。" % out)
+            print(u"   确认要覆盖请加 --force；或把项目专属核对项写进同目录 %s 后重跑，脚本会自动并入。" % EXTRA_DEFAULT)
+            sys.exit(1)
+    extra_path = args.extra_checks or os.path.join(os.path.dirname(path), EXTRA_DEFAULT)
+    extra_text = None
+    if os.path.exists(extra_path):
+        extra_text = io.open(extra_path, encoding="utf-8").read()
+        md = build(path, data, args.require_doorway, extra_text)   # 带项目专属项重渲染
     io.open(out, "w", encoding="utf-8", newline="").write(md)
     n = len(data.get("space_maps") or [])
     print(u"已生成：%s（%d 场）" % (out, n))

@@ -482,18 +482,21 @@ def main():
                 problems += 1
 
     # ⑩ 声线字段存在性计数（声线是虾塘四域之一，整层缺失必须报）
-    _VOICE_KEYS = ("voice", "voice_prompt", "voice_desc", "voice_cn", "voice_profile")
+    # 契约正本 = xiatang-characters SKILL.md「声线域契约」：唯一键名 voice_desc（+ voice_ready）
     _chars = [c for c in d.get("characters", []) if not c.get("group")]
-    _no_voice = [c.get("name") for c in _chars if not any(str(c.get(k) or "").strip() for k in _VOICE_KEYS)]
-    if _chars and len(_no_voice) == len(_chars):
-        print(u"❌ [声线] 整层缺失：%d/%d 个角色无任何声线字段（%s 之一）——"
-              u"声线与脸/服装同级，是连续性锚点，走到配音合成必卡门控"
-              % (len(_no_voice), len(_chars), "/".join(_VOICE_KEYS)))
+    _has_desc = [c for c in _chars if str(c.get("voice_desc") or "").strip()]
+    if _chars and not _has_desc:
+        print(u"❌ [声线] 声线域未落库：%d 个角色无一条 voice_desc——"
+              u"声线是虾塘四域之一、与脸/服装同级的连续性锚点，走到配音合成必卡门控。"
+              u"补法：按 xiatang SKILL.md「声线域契约」逐角色写 voice_desc（音色/年龄感/语速/气息/情绪底色），"
+              u"再跑 build-data-js.py 放行入快照" % len(_chars))
         problems += 1
-    elif _no_voice:
-        print(u"❌ [声线] %d/%d 个角色缺声线：%s"
-              % (len(_no_voice), len(_chars), u"、".join([str(x) for x in _no_voice[:8]])))
-        problems += 1
+    else:
+        _no_voice = [c.get("name") for c in _chars if not str(c.get("voice_desc") or "").strip()]
+        if _no_voice:
+            print(u"❌ [声线] %d/%d 个角色缺 voice_desc：%s"
+                  % (len(_no_voice), len(_chars), u"、".join([str(x) for x in _no_voice[:8]])))
+            problems += 1
 
     # ⑪ 场景图门通向兜底（条款正本 = xiatang scene-assets.md A2·5，此处只机械校验）
     _DOOR_MARK = "Doorway relation:"
@@ -503,8 +506,11 @@ def main():
         _img = str(s.get("image") or "").strip()
         if not _img or not os.path.exists(os.path.join(_proj, _img.replace("/", os.sep))):
             continue                      # ★ 图真在盘上才算「会被垫图」（registry 有路径但文件缺失另由同步检查管）
-        if s.get("layout_ready") is True:
-            continue                      # layout 已回填 → 兜底自动解除，分工回到 A2
+        # ★ 3.5.13 解除条件改用盘上事实：显式 layout_ready=true，或约定路径下真有 layout 图
+        _lay = str(s.get("layout_image") or "").strip()
+        if s.get("layout_ready") is True or (
+                _lay and os.path.exists(os.path.join(_proj, _lay.replace("/", os.sep)))):
+            continue                      # layout 已就位 → 兜底自动解除，分工回到 A2
         _pos = pos_part(str(s.get("prompt") or ""))
         _low = _pos.lower()
         if not any(w in _low for w in _DOOR_WORDS):
@@ -545,18 +551,19 @@ def selftest():
         img = "assets/characters/A.png" if stale else "assets/characters/A-1700000000000.png"
         ch = {"name": u"角色A", "image": img, "prompt": "x", "prompt_cn": u"x"}
         if voice:
-            ch["voice"] = u"女·低沉·略哑"
-        dtxt = (" Doorway relation: the door opens onto the yard; only the yard is visible through it; "
-                "no sea and no horizon are visible. ") if door else ""
+            ch["voice_desc"] = u"女·低沉·略哑"
+        base = u"a small room with a single wooden door and one window. "   # 恒含 door → ⑪ 判据成立
+        dtxt = base + (("Doorway relation: the door opens onto the yard; only the yard is visible through it; "
+                        "no sea and no horizon are visible. ") if door else "")
         reg = {"characters": [ch],
                "scenes": [{"name": u"场甲", "image": img, "layout_ready": False,
-                           "prompt": "a room." + dtxt + "Negative prompt: people",
+                           "prompt": dtxt + chr(10) + "Negative prompt: people",
                            "prompt_cn": u"一间屋"}],
                "props": [], "key_scenes": []}
         io.open(os.path.join(out_dir, "assets-registry.json"), "w", encoding="utf-8").write(
             json.dumps(reg, ensure_ascii=False))
 
-    NEEDLES = [u"陈旧指针", u"[声线]", u"Doorway relation"]
+    NEEDLES = [u"陈旧指针", u"[声线]", u"Doorway relation"]  # 探针串均取自新文案，改文案须同步
     sys.argv = ["check-assets.py", tmp]
     failed = 0
     for label, args, expect in [(u"投毒·旧指针+无声线+无门通向", (True, False, False), True),

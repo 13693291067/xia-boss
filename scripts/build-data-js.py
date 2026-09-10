@@ -538,6 +538,9 @@ for reg in registry["characters"]:
         "image_ready": asset_exists("characters", latest_versioned('characters', name)),
         "prompt": prompt,
         "prompt_cn": str(reg.get("prompt_cn") or ""),
+        # ★ 2026-09-10 3.5.13 声线域契约（xiatang SKILL.md「声线域契约」）：未知字段会被本装配器丢弃，必须显式放行前端才拿得到
+        "voice_desc": str(reg.get("voice_desc") or ""),
+        "voice_ready": bool(reg.get("voice_ready")) or asset_exists("voices", f"{name}.mp3"),
         "history": asset_history("characters", f"{name}.png"),
         "identities": [{"identity_id": idn["identity_id"], "name": idn["identity_name"], "image": f"assets/characters/{latest_versioned('characters', name + '-' + idn['identity_id'])}", "image_ready": asset_exists("characters", latest_versioned('characters', name + '-' + idn['identity_id'])), "prompt": _ensure_lock_face(idn.get("prompt", "")), "prompt_cn": str(idn.get("prompt_cn", "")), "sheet_prompt": idn.get("sheet_prompt", ""), "sheet_prompt_cn": str(idn.get("sheet_prompt_cn", "")), "sheet_image": f"assets/characters/{latest_versioned('characters', name + '-' + idn['identity_id'] + '-sheet')}", "sheet_ready": asset_exists("characters", latest_versioned('characters', name + '-' + idn['identity_id'] + '-sheet')), "history": asset_history("characters", f"{name}-{idn['identity_id']}.png"), "sheet_history": asset_history("characters", f"{name}-{idn['identity_id']}-sheet.png"), "chapter_range": idn.get("chapter_range", ""), "evidence": idn.get("evidence", "")} for idn in reg.get("identities", [])]
     })
@@ -563,7 +566,12 @@ for s in registry["scenes"]:
         "header": s.get("header") or f"{s.get('episode','')}-{s.get('scene','')} {s['name']} {s.get('time','')} {s.get('interior','')}",
         "time": s.get("time", ""), "interior": s.get("interior", False),
         "image": f"assets/scenes/{latest_versioned('scenes', s['name'])}", "image_ready": asset_exists("scenes", latest_versioned('scenes', s['name'])),
-        "prompt": prompt, "prompt_cn": str(s.get("prompt_cn") or ""), "usage_count": s.get("usage_count", 0)
+        "prompt": prompt, "prompt_cn": str(s.get("prompt_cn") or ""), "usage_count": s.get("usage_count", 0),
+        # ★ 2026-09-10 3.5.13 A2 空间基准图承载字段（scene-assets.md A2·2·补）：未登记时按约定路径探测，探测到即视为 ready（不依赖没人写的布尔位）
+        "layout_image": str(s.get("layout_image") or (
+            f"assets/scenes/{latest_versioned('scenes', s['name'] + '-layout')}"
+            if asset_exists("scenes", latest_versioned("scenes", s["name"] + "-layout")) else "")),
+        "layout_ready": bool(s.get("layout_ready")) or asset_exists("scenes", s["name"] + "-layout")
     })
 
 # ★ 2026-08-20：merge SQLite 现有 xiatang 快照的运行时字段（views/views_ready/plan/plan_ready/
