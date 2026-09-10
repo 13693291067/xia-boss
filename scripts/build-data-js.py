@@ -378,6 +378,10 @@ for ed in ep_dirs:
             # ★ 2026-09-09 镜级空间拓扑图资产名（引用行末位/垫图对应场）
             # ★ 2026-09-10 3.5.16 草图提示词透传：白名单装配器不透传＝前端永远拿不到（同 voice_desc 坑）
             "sketch_prompt": _s.get("sketch_prompt", ""),
+            # ★ 2026-09-10 3.5.17 草图位：仅当文件真在盘上才给路径（否则前端会显示破图而非"未生成"）
+            "sketch_image": _s.get("sketch_image") or (
+                f"assets/ep{ep_num:03d}/sketches/shot{_nn}.png"
+                if asset_exists(f"ep{ep_num:03d}/sketches", f"shot{_nn}.png") else ""),
             "space_map": _s.get("space_map", ""),
             # ★ 2026-08-22 分镜大纲字段（Tab1 7 列）：大纲生成器写回，缺省回退完整字段
             "outline_visual": _s.get("outline_visual") or _s.get("visual", ""),
@@ -627,6 +631,10 @@ for p in registry["props"]:
     props.append({
         "name": p["name"], "owner": p.get("character", ""), "reason": p.get("reason", ""),
         "image": f"assets/props/{latest_versioned('props', p['name'])}", "image_ready": asset_exists("props", latest_versioned('props', p['name'])), "prompt": prompt,
+        # ★ 2026-09-10 3.5.17 道具契约字段放行（纪律 19③：识别锚点 + 剧情锁定状态）——此前被白名单静默丢弃，前端拿不到（check-field-passthrough 首跑抓出）
+        "continuity_anchors": p.get("continuity_anchors") or [],
+        "story_state": p.get("story_state", ""),
+        "priority": p.get("priority", ""),
         "prompt_cn": str(p.get("prompt_cn") or ""),
         "history": asset_history("props", f"{p['name']}.png")
     })
@@ -761,7 +769,7 @@ project = {
         # ★ FS 固定风格库（虾格产出 outputs/fs-library.md，读入供虾镜按 FS-XX 引用与项目台展示）
         "fs_library": (open(os.path.join(BASE, "outputs", "fs-library.md"), encoding="utf-8").read()
                        if os.path.exists(os.path.join(BASE, "outputs", "fs-library.md")) else ""),
-        # ★ 2026-09-10 3.5.14 全剧情绪曲线 + 色调总表（虾格产出 creation-direction.json 字段）：白名单装配器会丢弃未知字段，必须显式放行前端才拿得到
+        # ★ 2026-09-10 3.5.15 全剧情绪曲线 + 色调总表（虾格产出 creation-direction.json 字段）：白名单装配器会丢弃未知字段，必须显式放行前端才拿得到
         "emotion_curve": (creation_dir or {}).get("emotion_curve", {}),
         "global_tone_table": (creation_dir or {}).get("global_tone_table", {}),
         # ★ 全剧定风格图（美术圣经锚）：assets/styles/style_keyframe*.png 最新一张

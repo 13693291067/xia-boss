@@ -9,6 +9,45 @@
 > 2. **日期**：有 ★ 日期者照记；3.2.0 / 3.2.1 / 3.2.2 包内只有版本号无日期，标「日期未标」不猜。
 > 3. **编号约定报备**：`3.4.0` 当次出现**两个并行标签**——裸 `3.4.0`（画面语法横切）与 `v3.4.0-风格库`（虾格风格挂载库，包内 25 处引用）。这是并发会话撞号后按"带后缀不裸用版本号"约定的处置，**保留现状不重编号**：重编号会断掉 25 处已落地的带后缀引用。
 
+## 3.5.17-防复发四件套（A/B/C/D） — 2026-09-10
+
+> 触发：用户问「后续做草图时这些问题还会再出现吗」。自查结论：五类里三类已被机械兜住，四类仍会复发——其中两处我这一批就栽过。本条目把这四处补成门禁/链路。
+> **VERSION 未递增**（3.5.15 由并发会话占号中，避免覆盖），落地时以本条目为准。
+
+### 🔍 自查结论（先核再答，不凭印象）
+
+| 残留风险 | 核实结果 |
+|---|---|
+| A 忘跑派生器 | `gen-sketch-prompts.py` 只出现在纪律正文，**没进 §0.7 交付硬门禁** → 下一集仍可能 0 交付，只是会被 E 项打回（返工≠预防） |
+| B 新字段被白名单吞 | **零检查**；本批已连踩两次（`voice_desc`、`sketch_prompt`） |
+| C 双副本分叉 | `check-template-hygiene` 里 **无任何 md5 比对**；本批我实际犯了两次（check-assets 3.5.12、build-data-js 3.5.13/3.5.14 双向） |
+| D 待人工补无入口 | `templates/js/` 对 `sketch_prompt` **零渲染**；且 server 的 `sketch` 分支还在写 `beats`（渔村 `beats` 条数＝0）→ **草图上传/保存整条链路是死的** |
+
+### ➕ 变更
+
+- **A**：SKILL.md §0.7 虾镜线交付门禁补一句「E 项前置动作＝跑 `gen-sketch-prompts.py`」，明确"不跑就没有草图层，被 E 打回属返工"。
+- **B**：新增 `scripts/check-field-passthrough.py`——比对「数据源键集合 vs 项目台快照键集合」，源有而快照无＝被 `build-data-js` 白名单静默丢弃（P1）；有意不落库的键走带理由的豁免表；`--selftest` 三例（含"快照少 voice_desc"必报、键一致不报、豁免不报）。
+  - **首跑即抓到两个真吞字段**：道具的 `continuity_anchors`／`story_state`／`priority`（纪律 19③ 明定的契约字段，前端一直拿不到）→ 已在 build-data-js 放行。
+- **C**：`check-template-hygiene.py` 新增 `check_dual_copies()`，对 `DUAL_COPIES` 清单（check-assets 两份、build-data-js 两份）做忽略 CRLF 的逐字节比对，不一致＝P0。**投毒验证**：给一份尾部加一行 → 立刻 P0 1；还原 → P0 0。
+- **D**（四处，草图链路打通）：
+  - `build-data-js.py`：shot 生成 `sketch_image`（**仅文件真在盘上才给路径**，否则前端显示破图而非"未生成"）
+  - `server.py` save-prompt：`sketch` 分支补 shots 路径（`name=shot{镜号}` → `shots[].sketch_prompt`），beats 旧路径保留兼容
+  - `server.py` mark_ready：`sketch/frame` 查图改为同时扫 `shots[]`（此前只扫 beats → 上传成功但 ready 永远写不进）
+  - `xiajing.js`：制作页加「草图」块（复用 `renderProdBlock`），并加两枚角标——`⚠️ 待人工补姿态（E 项会 FAIL）`、`⏳ 缺草图提示词（跑 gen-sketch-prompts.py 派生）`；`index.html` 递增 `?v=`
+
+### ✅ 回归
+
+六个 `--selftest` 全部 exit 0（field-passthrough / template-hygiene / script-fidelity / check-assets / check-scenes / sketch_rules）；`check-field-passthrough` 对渔村复跑 **P1 0**；`check-template-hygiene` 含双副本检查 **P0 0/P1 0**；`build-data-js` 双副本逐字节一致。
+**端到端实测 D**：真起服务 POST `category=sketch&name=shot001.png` → 响应 ok；db 内镜001 `sketch_image`+`sketch_ready=True`，**其余 50 镜未被误写**；测试图与 db 已复原/移入回收目录。JS 括号与模板字符串平衡校验过，`py_compile` 全过。
+
+### 📎 证据
+
+- `scripts/check-field-passthrough.py`（新）；`scripts/check-template-hygiene.py`（`DUAL_COPIES`/`check_dual_copies`）
+- `templates/server.py`（sketch save/mark_ready 的 shots 分支）、`templates/js/xiajing.js`（草图块 + 角标）
+- `scripts/build-data-js.py` + `templates/build-data-js.py`（props 契约字段、sketch_image）
+
+---
+
 ## 3.5.16-草图提示词规范与派生器 — 2026-09-10
 
 > 触发：用户纠偏「草图不应由 AI 即兴生成，应有一套完整的提示词规则来要求并规范草图生成」。

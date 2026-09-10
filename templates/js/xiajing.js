@@ -232,6 +232,7 @@ function renderMakeTab(ep){
             <span style="font-size:11px;color:var(--mut);align-self:center">底图默认所属场景图/首帧图；文字/编号/圆/矩形/画笔</span>
           </div>
         </div>
+        ${renderProdBlock(s,"sketch","草图")}
         ${renderProdBlock(s,"firstframe","首帧")}
         ${renderProdBlock(s,"tailframe","尾帧")}
         ${renderProdBlock(s,"video","视频")}
@@ -251,7 +252,13 @@ function renderProdBlock(s,key,lbl){
           : `<div style="height:160px;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--mut);font-size:12px;border-radius:8px;border:1px dashed var(--line)">未生成</div>`);
   return `
   <div style="margin-bottom:16px">
-    <b style="font-size:13px;display:block;margin-bottom:6px">${lbl} ${isVideo?"🎬":"🖼"}</b>
+    <b style="font-size:13px;display:block;margin-bottom:6px">${lbl} ${isVideo?"🎬":"🖼"}${
+        key==="sketch" && String(s.sketch_prompt||"").indexOf("【待人工补") >= 0
+          ? ` <span class="pill" style="font-size:10px;color:#b45309">⚠️ 待人工补姿态（保真门禁 E 项会 FAIL）</span>` : ""
+    }${
+        key==="sketch" && !String(s.sketch_prompt||"").trim()
+          ? ` <span class="pill" style="font-size:10px;color:#b45309">⏳ 缺草图提示词（跑 gen-sketch-prompts.py 派生）</span>` : ""
+    }</b>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start">
       <div>${media}</div>
       <div style="position:relative">

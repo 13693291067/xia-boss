@@ -556,6 +556,14 @@ def find_target(data, category, fname):
                 img = b.get(img_key, "")
                 if os.path.basename(img or "") == fname:
                     return b, img
+            # ★ 2026-09-10 3.5.17 草图/首帧上传要能在 shots 上定位（beats 已不存在，
+            #   否则上传成功但 ready 永远写不进去＝页面一直显示未生成）
+            for s in _e.get("shots", []):
+                img = s.get(img_key, "")
+                if img and os.path.basename(img or "") == fname:
+                    return s, img
+                if category == "sketch" and str(s.get("shot_number", "")) == fname.replace("shot", "").replace(".png", ""):
+                    return s, img
     elif category == "video":
         for ep in data.get("xiajing", {}).get("episodes", []):
             for b in ep.get("beats", []):
@@ -753,6 +761,13 @@ class Handler(SimpleHTTPRequestHandler):
                 for b in e.get("beats", []):
                     if str(b.get("beat_number", "")) == bn:
                         b[key] = prompt; ok = True
+                # ★ 2026-09-10 3.5.17 现行数据模型是 shots（beats 已不存在）：
+                #   name=shot{镜号} 时写 shots[].sketch_prompt，否则草图提示词编辑无处保存（静默 404）
+                if category == "sketch":
+                    sn = base.replace("shot", "", 1)
+                    for s in e.get("shots", []):
+                        if str(s.get("shot_number", "")) == sn:
+                            s["sketch_prompt"] = prompt; ok = True
         elif category == "frame":
             # ★ 2026-08-21 兼容新旧：frame → firstframe_prompt（beats 与 shots 都查）
             bn = base.replace("beat", "", 1).replace("shot", "", 1)

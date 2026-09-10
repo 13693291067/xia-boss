@@ -139,9 +139,37 @@ def check_launcher_hygiene():
     return issues
 
 
+
+# ── 双副本正本（★ 2026-09-10 自查固化：同一批次内我分叉过两次，此前零机械兜底）──
+# 同一份代码被两个入口引用时，改一份必须同步另一份；逐字节比对（忽略 CRLF 差异）
+DUAL_COPIES = [
+    ("scripts/check-assets.py", "modules/xiatang-characters/scripts/check-assets.py"),
+    ("scripts/build-data-js.py", "templates/build-data-js.py"),
+]
+
+
+def _norm(p):
+    return io.open(p, "rb").read().replace(b"\r\n", b"\n")
+
+
+def check_dual_copies():
+    out = []
+    for a_rel, b_rel in DUAL_COPIES:
+        a = os.path.join(PKG, *a_rel.split("/"))
+        b = os.path.join(PKG, *b_rel.split("/"))
+        if not os.path.exists(a) or not os.path.exists(b):
+            miss = a_rel if not os.path.exists(a) else b_rel
+            out.append(("P0", a_rel, u"双副本缺文件：%s" % miss))
+            continue
+        if _norm(a) != _norm(b):
+            out.append(("P0", a_rel, u"与 %s 内容不一致——同一代码两个入口会得出不同结论；"
+                                     u"改任一份后必须 cp 同步并复跑本门禁" % b_rel))
+    return out
+
+
 def run_all(project_root=None, text=None):
     """text: 覆盖 index.html 内容（自检用）；返回问题列表。"""
-    issues = check_placeholders() + check_launcher_hygiene()
+    issues = check_placeholders() + check_launcher_hygiene() + check_dual_copies()
     if project_root:
         words, note = project_words(project_root)
         if note:
