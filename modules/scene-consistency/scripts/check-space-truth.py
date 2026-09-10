@@ -86,8 +86,8 @@ def run_gates(data):
         _fail(bad, "G3", "sea_bearing 非法：%r（必须 N/E/S/W 之一）" % (sea,))
     else:
         for m in data.get("masters", []):
-            if m.get("kind") != "enclosed":
-                continue
+            if m.get("kind") != "enclosed" or m.get("interior"):
+                continue      # 只对室外母版要求「海向可达」；室内本就不该直接看见海
             cell = (m.get("enclosure") or {}).get(sea)
             if isinstance(cell, dict) and cell.get("type") not in SEA_VISIBLE_TYPES:
                 _fail(bad, "G3", "%s 的 %s 面是 %s，海在该向却看不见（围合与 sea_bearing 冲突）"
@@ -128,6 +128,10 @@ def run_gates(data):
         _fail(bad, "G7", "approved=true 但仍有未决阻断矛盾：%s" % ",".join(map(str, unresolved_blocking)))
 
     # ---------- G8 同名锚点跨母版自洽 ----------
+    # 共享墙上的同一物体在两个空间里的方位本应「相反」（屋子的南墙＝院子的北缘），
+    # 反向是合法的，前提是母版对与两侧墙位已登记在 adjoin。真冲突＝既不同向、
+    # 也非 adjoin 声明的反向、且未登记进 open_issues。
+    ANTIPODE = {"N": "S", "S": "N", "E": "W", "W": "E"}
     seen = {}
     for m in data.get("masters", []):
         for a in m.get("anchors", []):
@@ -136,10 +140,25 @@ def run_gates(data):
                 continue
             seen.setdefault(aid, []).append((m.get("id"), a.get("bearing")))
     issues_blob = json.dumps(data.get("open_issues", []), ensure_ascii=False)
+    adjoin_pairs = set()
+    for j in data.get("adjoin", []):
+        adjoin_pairs.add((j.get("a"), j.get("a_wall"), j.get("b"), j.get("b_side")))
+        adjoin_pairs.add((j.get("b"), j.get("b_side"), j.get("a"), j.get("a_wall")))
     for aid, occ in seen.items():
-        bearings = set(b for _, b in occ if b)
-        if len(occ) > 1 and len(bearings) > 1 and aid not in issues_blob:
-            _fail(bad, "G8", "锚点 %r 跨母版方位冲突 %s，却未登记在 open_issues（隐性矛盾不许静默通过）" % (aid, occ))
+        if len(occ) < 2:
+            continue
+        for i in range(len(occ)):
+            for k in range(i + 1, len(occ)):
+                m1, b1 = occ[i]
+                m2, b2 = occ[k]
+                if b1 == b2:
+                    continue
+                if (m1, b1, m2, b2) in adjoin_pairs and ANTIPODE.get(b1) == b2:
+                    continue          # 合法反向：共享墙两侧各自坐标系下的正常表现
+                if aid in issues_blob:
+                    continue          # 已登记为未决矛盾，由 G7 负责拦确认门
+                _fail(bad, "G8", "锚点 %r 跨母版方位冲突：%s@%s vs %s@%s（既不同向也非 adjoin 声明的反向，且未登记 open_issues）"
+                      % (aid, b1, m1, b2, m2))
 
     return bad
 
@@ -219,7 +238,34 @@ def selftest():
 
     print("")
     print("自检结论：%s（%d 个投毒样本 / 1 个干净样例）" % ("全部命中，门禁不空转" if ok else "存在空转，须修", len(POISONS)))
-    return 0 if ok else 4
+    if not ok:
+        return 4
+
+    # 正面用例：合法反向（共享门，屋内 S 面 ↔ 院中 N 侧，adjoin 已声明）不得误报
+    mirror = {
+        "schema": "space-truth/1", "approved": False, "sea_bearing": "S",
+        "reference_lighting": {"mode": "neutral", "no_time_signature": True},
+        "masters": [
+            {"id": "H", "kind": "enclosed",
+             "enclosure": {"N": {"type": "wall_solid", "source": "x"}, "E": {"type": "wall_solid", "source": "x"},
+                           "S": {"type": "door", "source": "x"}, "W": {"type": "wall_solid", "source": "x"}},
+             "anchors": [{"id": "door", "name": "屋门", "bearing": "S", "source": "x"}],
+             "object_whitelist": ["屋门"]},
+            {"id": "Y", "kind": "enclosed",
+             "enclosure": {"N": {"type": "house", "source": "x"}, "E": {"type": "wall_low", "source": "INFER", "basis": "对称"},
+                           "S": {"type": "fence", "source": "x"}, "W": {"type": "wall_low", "source": "INFER", "basis": "对称"}},
+             "anchors": [{"id": "door", "name": "屋门", "bearing": "N", "source": "x"}],
+             "object_whitelist": ["屋门"]},
+        ],
+        "adjoin": [{"a": "H", "a_wall": "S", "b": "Y", "b_side": "N", "via": "door"}],
+        "open_issues": [],
+    }
+    mirror_hits = [g for g, _ in run_gates(mirror) if g == "G8"]
+    if mirror_hits:
+        print("[FAIL] 合法反向（adjoin 声明的共享门 S↔N）被误报：%s" % mirror_hits)
+        return 4
+    print("[ OK ] 合法反向用例零报警（G8 不误伤 adjoin 声明的共享门）")
+    return 0
 
 
 def main():
